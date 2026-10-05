@@ -1,0 +1,84 @@
+[
+  {
+    "name": "IoTOpsCIMService_high_cpu",
+    "description": "IoTOpsCIMService JVM process CPU at or above 85% for 3+ samples in a 5-minute window. Source: process_cpu_usage (Micrometer, fraction 0-1, so 0.85 = 85%).",
+    "stream_type": "metrics",
+    "stream_name": "process_cpu_usage",
+    "is_real_time": false,
+    "enabled": true,
+    "creates_incident": false,
+    "destinations": ["alerts"],
+    "row_template": "",
+    "context_attributes": {
+      "service": "IoTOpsCIMService",
+      "signal": "cpu",
+      "owner": "platform"
+    },
+    "query_condition": {
+      "type": "custom",
+      "conditions": {
+        "and": [
+          { "column": "service_name", "operator": "=", "value": "IoTOpsCIMService", "ignore_case": false },
+          { "column": "value", "operator": ">=", "value": 0.85, "ignore_case": false }
+        ]
+      },
+      "sql": null,
+      "promql": null,
+      "vrl_function": null,
+      "aggregation": null
+    },
+    "trigger_condition": {
+      "period": 5,
+      "operator": ">=",
+      "threshold": 3,
+      "frequency": 1,
+      "frequency_type": "minutes",
+      "cron": "",
+      "silence": 10,
+      "timezone": "UTC",
+      "align_time": true
+    }
+  },
+  {
+    "name": "IoTOpsCIMService_high_heap_memory",
+    "description": "IoTOpsCIMService G1 Old Gen at or above 80% of the 4 GiB max heap (3435973836 bytes) for 3+ samples in 5 minutes. Old Gen is used rather than total heap because G1 Eden filling and being collected is normal GC behaviour and would page constantly.",
+    "stream_type": "metrics",
+    "stream_name": "jvm_memory_used_bytes",
+    "is_real_time": false,
+    "enabled": true,
+    "creates_incident": false,
+    "destinations": ["alerts"],
+    "row_template": "",
+    "context_attributes": {
+      "service": "IoTOpsCIMService",
+      "signal": "memory",
+      "owner": "platform"
+    },
+    "query_condition": {
+      "type": "custom",
+      "conditions": {
+        "and": [
+          { "column": "service_name", "operator": "=", "value": "IoTOpsCIMService", "ignore_case": false },
+          { "column": "area", "operator": "=", "value": "heap", "ignore_case": false },
+          { "column": "id", "operator": "=", "value": "G1 Old Gen", "ignore_case": false },
+          { "column": "value", "operator": ">=", "value": 3435973836, "ignore_case": false }
+        ]
+      },
+      "sql": null,
+      "promql": null,
+      "vrl_function": null,
+      "aggregation": null
+    },
+    "trigger_condition": {
+      "period": 5,
+      "operator": ">=",
+      "threshold": 3,
+      "frequency": 1,
+      "frequency_type": "minutes",
+      "cron": "",
+      "silence": 15,
+      "timezone": "UTC",
+      "align_time": true
+    }
+  }
+]

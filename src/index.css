@@ -1,0 +1,7472 @@
+/* Open Sans is the Settings screen only — see the `--font-sans` override on
+   `.iam-view` in styles/iam.css. 400/600/700 because that screen uses regular
+   body text, the semibold in its badges and pagers, and 700 on the active tab,
+   the card titles and the column headings; anything not requested here would be
+   synthesised by the browser and look nothing like the real weight. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Open+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Logs screen chrome — toolbar, query editor, time range, refresh interval.
+   Imported first so the rules further down this file still win on conflict. */
+@import './styles/logs-query.css';
+/* Traces screen — tab strip, chart row, and the three tables. */
+@import './styles/traces-oo.css';
+/* IAM screen + the global organization switcher. */
+@import './styles/iam.css';
+/* Metrics explorer — catalogue, PromQL toolbar, chart and series table. */
+@import './styles/metrics.css';
+/* Trace detail — waterfall, flame graph, trace graph, span panel. */
+@import './styles/trace-detail.css';
+/* Alerts — folders rail, alert list, editor, import, and the IAM user drawer. */
+@import './styles/alerts.css';
+/* Enterprise Alerts screen — summary cards, filter bar, wide table, details
+   drawer, toasts. Imported after alerts.css because it builds on that file's
+   buttons, modals and banners rather than restyling them. */
+@import './styles/alerts-enterprise.css';
+/* Product Catalog — registry table, register dialog, details drawer. Imported
+   after alerts.css because it builds on that file's buttons, modals and form
+   controls rather than restyling them. */
+@import './styles/catalog.css';
+/* Analytics Dashboard, DRILL TABLE face — log-volume counts drilled through the
+   Product Catalog. Imported after catalog.css and alerts.css because it reuses
+   their banners, selects and skeleton rows rather than restyling them. It also
+   declares the --an-* severity palette that BOTH Analytics faces read, so it comes
+   before the two files below. */
+@import './styles/analytics.css';
+/* Analytics Dashboard, CATEGORY BOARD face — category cards and the members panel. */
+@import './styles/analytics-category-board.css';
+/* The flip deck hosting the two faces. Last of the three: it reaches into both
+   faces to suppress their duplicate title and reset their top padding, so it has to
+   be able to win on equal specificity. */
+@import './styles/analytics-flip.css';
+/* Settings → Resource — OpenObserve storage in GB. Fully namespaced `rs-`, and
+   imported last so its one structural rule (`.iam-main > .rs-view`) sits after
+   the iam.css layout it extends. */
+@import './styles/resources.css';
+/* Dashboards screen + Settings → Dashboard Catalog. Fully namespaced `gd-`, and
+   like resources.css it carries one structural rule (`.iam-main > .gd-catalog`)
+   that has to sit after the iam.css layout it extends. It also builds on
+   alerts.css (banners, primary button) and iam.css (search box, switch buttons,
+   the `uem-` dialog) rather than restyling any of them, so it comes after both. */
+@import './styles/dashboards.css';
+/* Alerts, repainted to the Settings spec — the #262626 page, the 11px #404040
+   frame, 35px row bands, Open Sans and square edges that styles/iam.css draws.
+   Imported LAST because it is entirely `.alerts-shell`-scoped overrides of rules
+   that live in alerts.css, alerts-enterprise.css, catalog.css and traces-oo.css,
+   several of them on equal specificity — it has to be able to win on order. */
+@import './styles/alerts-settings.css';
+/* Log Analytics, repainted to the same Settings spec — the #262626 page, the 11px
+   #404040 frame, 35px row bands, Open Sans and square edges that styles/iam.css
+   draws and styles/alerts-settings.css brought to Alerts. Imported LAST because it
+   is entirely `.analytics-shell`-scoped overrides of rules that live in
+   analytics.css, analytics-category-board.css, analytics-flip.css, alerts.css and
+   logs-query.css, several of them on equal specificity — it has to be able to win
+   on order. */
+@import './styles/analytics-settings.css';
+/* Alert creation wizard — the 1━2━3 rail and the Product Catalog service picker
+   that "New alert" now opens. Imported after alerts.css, whose editor chrome it
+   borrows, and after alerts-settings.css, because its second half restates that
+   file's Settings-spec palette for the surfaces the wizard adds. */
+@import './styles/alert-wizard.css';
+
+:host,
+:root {
+  --bg-color: #181818;
+  --surface-color: #242424;
+  --border-color: #333333;
+  --text-primary: #e0e0e0;
+  --text-secondary: #8c8c8c;
+  --accent-color: #00968f;
+  /* Honeywell Teal */
+  --error-color: #d32f2f;
+  --warn-color: #f57c00;
+  --info-color: #00968f;
+  --success-color: #388e3c;
+
+  /* ── Severity scale ────────────────────────────────────────────────────────
+     ONE source of truth for "what colour is this level", read by every surface
+     that reports a severity: Analytics (both faces), the logs histogram,
+     the logs summary breakdown, the per-row left edge and the trace-group pill.
+     Before this existed each of those carried its own literals, so the same
+     ERROR was #d32f2f in one place, #ef5350 in another and #f85149 in a third
+     — which is how an operator starts wondering whether the count they clicked
+     and the rows they landed on are the same measurement.
+
+     Deliberately NOT the same thing as --error-color / --warn-color /
+     --info-color, which stay exactly as they are. Those dress CHROME — banners,
+     invalid fields, destructive buttons — where the colour is mostly a fill or
+     a border and a darker, denser tone is the right call. These are tuned as
+     TEXT on --surface-color, which is a different problem: --error-color manages
+     3.1:1 there, and that is where "the error count is red" turns into "the
+     error count is a slightly warm grey". Every entry below clears 4.5:1 on both
+     --surface-color and --bg-color; the tightest is --sev-fatal at 4.6:1.
+
+     Hue order is deliberate and monotone with severity: grey, violet, blue for
+     the healthy majority, then amber, then two reds. info and debug are both
+     cool, so debug is violet rather than a second blue — a 6px debug segment
+     next to an info segment in a stacked bar has to be tellable apart.
+
+     FATAL is pushed toward crimson rather than made a darker red. Darker is the
+     intuitive move and it is wrong here: against a #181818 ground darker means
+     less contrast, so the most severe level would end up the hardest to read. */
+  --sev-fatal: #ff4560;
+  --sev-error: #ff6b6b;
+  --sev-warn: #ffb74d;
+  --sev-info: #4fc3f7;
+  --sev-debug: #a78bfa;
+  --sev-trace: #90a4ae;
+  /* Severity absent or unrecognised. The quietest entry, but still a legible
+     one: a line nobody labelled is not a finding, yet a stream that is mostly
+     unlabelled is itself worth seeing, and the stacked bars are where that
+     shows up. Neutral rather than blue-grey so it does not read as TRACE. */
+  --sev-other: #8f8f96;
+  --hover-bg: rgba(0, 150, 143, 0.08);
+  --company-bg: #1e1e1e;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  /* Plot height of the logs histogram. The SVG and the absolutely-positioned
+     y-axis labels MUST be the same height or the labels stop lining up with
+     their gridlines, so the value lives in one place. */
+  --histo-h: 64px;
+
+  /* ── Dashboard-scene palette ───────────────────────────────────────────────
+     The six colours the Grafana scenes are allowed to draw their CHROME with.
+     Declared here, on :root, for one mechanical reason: src/grafana/theme.js
+     builds `config.theme2` by reading computed custom properties off
+     document.documentElement, and a token declared only on `.gd-viewer` is
+     invisible to that read — the theme would silently fall back to the app's
+     own greys and the panels would come out *nearly* right, which is the
+     failure nobody files.
+
+     Declaring them globally does NOT widen their reach. Nothing outside
+     theme.js and the `.gd-viewer` block in styles/dashboards.css reads a
+     --scene-* token, so Logs, Traces, RUM, Alerts, Reports, IAM and Settings
+     keep the --bg-color/--surface-color values above, untouched.
+
+     Change a value here and BOTH halves of a scene move together: the CSS
+     chrome (toolbar, canvas, text panels) because `.gd-viewer` maps the app
+     tokens onto these, and everything @grafana/ui draws inside a panel (axes,
+     grid lines, table rows, tooltips, gauge tracks, the variable pickers)
+     because theme.js reads the same properties. Two copies of #262626 is how
+     the canvas and the grid gutters end up half a shade apart. */
+  --scene-bg: #131313;         /* canvas behind the panel grid */
+  --scene-surface: #262626;    /* panel bodies, toolbar */
+  --scene-border: #404040;     /* panel outlines, table rules, gauge tracks */
+  --scene-tint: rgba(64, 64, 64, 0.4);  /* hover / selected / row stripe */
+  --scene-accent: #009688;     /* links, focus rings, active tab, live dot */
+  --scene-text: #ffffff;       /* values, headings, table cells */
+
+  /* ── Emphasis ladder ──────────────────────────────────────────────────────
+     The palette names one white and one grey, but a dense table needs four
+     weights of text and three of stroke. Both ladders are the SAME colours at
+     reduced alpha — an #ffffff at 62% is still #ffffff — which is how the
+     palette yields a full hierarchy without a seventh colour.
+
+     Matched to grafana-embed/web/src/index.css so the two consoles read as one
+     product. This is what stops every panel rendering at one flat weight:
+     --scene-ink-muted is body text and axis ticks, --scene-ink-subtle is column
+     headings and legends, --scene-ink-faint is the query-time stamp and the
+     "no data" filler. */
+  --scene-ink-muted: rgba(255, 255, 255, 0.62);
+  --scene-ink-subtle: rgba(255, 255, 255, 0.42);
+  --scene-ink-faint: rgba(255, 255, 255, 0.28);
+
+  /* Three stroke weights, for the same reason. A table whose cell dividers,
+     panel outline and focused-input border are all one solid #404040 reads as a
+     wireframe; the reference separates them by alpha instead of by hue.
+     --scene-stroke-weak is the veil (cell dividers, panel outline),
+     --scene-stroke is the solid grey (header rules, controls), and
+     --scene-stroke-strong is white at 22% for the one edge that must assert
+     itself. */
+  --scene-stroke-weak: rgba(64, 64, 64, 0.4);
+  --scene-stroke: #404040;
+  --scene-stroke-strong: rgba(255, 255, 255, 0.22);
+
+  /* Accent states. hover/press are the only two values in this file that are
+     not one of the six or an alpha of one — a solid teal button with no hover
+     response reads as disabled, and `filter: brightness()` on a fill also
+     lightens the label sitting on it. Both come from the reference verbatim.
+     The three `soft` values are the accent at low alpha and introduce nothing:
+     they back a selected table row, a focus ring, and a hovered tab. */
+  --scene-accent-hover: #00a595;
+  --scene-accent-press: #00796b;
+  --scene-accent-soft: rgba(0, 150, 136, 0.16);
+  --scene-accent-softer: rgba(0, 150, 136, 0.08);
+  --scene-accent-ring: rgba(0, 150, 136, 0.35);
+
+  /* A disabled control's fill. Lighter than the veil on purpose: the veil is the
+     HOVER state, and a disabled control that looks hovered is a control people
+     keep clicking. */
+  --scene-disabled-bg: rgba(64, 64, 64, 0.24);
+
+  /* ── The two functional hues ──────────────────────────────────────────────
+     Deliberately outside the palette, and deliberately NOT the app's own
+     --error-color/--warn-color. Those two (#d32f2f, #f57c00) are tuned as fills
+     on the app's lighter #242424 chrome; on a #262626 panel next to white text
+     they go muddy — #d32f2f manages 3.1:1, which is where "the query failed"
+     becomes "the query is a slightly warm grey". These are the reference's,
+     tuned for exactly this surface. */
+  --scene-danger: #e5484d;
+  --scene-danger-soft: rgba(229, 72, 77, 0.14);
+  --scene-warning: #e2a336;
+  --scene-warning-soft: rgba(226, 163, 54, 0.14);
+
+  /* The same two hues as TEXT rather than as a fill. A hue that works as a
+     filled chip is too dark to read as a word on #262626, so each gets a
+     brighter sibling — the values the reference uses. Tokens rather than a
+     lighten() call in theme.js: derived-on-the-fly meant the stylesheet could
+     not name the colour it was already showing. */
+  --scene-danger-text: #ff9498;
+  --scene-warning-text: #f0c274;
+
+  /* ── Rhythm ───────────────────────────────────────────────────────────────
+     Only what the scene surface itself needs; panel interiors are laid out by
+     @grafana/ui from the theme's own spacing. */
+  --scene-pad: 12px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body,
+:host {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:host {
+  display: block;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+}
+
+/* Native elements standing in for what used to be a div or span with an ARIA
+   role (<dialog open>, <button>, <table>/<tr>/<th>/<td>, <fieldset>, <output>,
+   <section>). `native-el` strips the user-agent styling so each one renders as
+   the div it replaced; :where() keeps it at zero specificity, so the
+   component's own class still decides layout. `native-inline` is for a span. */
+:where(.native-el) {
+  display: block;
+  position: static;
+  inset: auto;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  min-width: 0;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  vertical-align: baseline;
+  overflow: visible;
+}
+
+:where(.native-el.native-inline) {
+  display: inline;
+}
+
+a,
+.link {
+  color: var(--accent-color);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a:hover,
+.link:hover {
+  text-decoration: underline;
+}
+
+/* Layout Utilities */
+.container {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Chrome-free shell: no app top bar, content stretched to the viewport.
+   Used by the Dashboard tab, whose embedded dashboard brings its own toolbar and
+   should own every available pixel. A flex column means the content area takes
+   exactly the leftover height below the tab bar — no "100vh minus 104px" guess
+   that silently drifts when a bar's padding changes. */
+.container--chromeless {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+/* Discovery/Logs View Styles */
+.logs-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+}
+
+.filters-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-color);
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+  gap: 2rem;
+}
+
+.controls-left {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+}
+
+.controls-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.date-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.date-filter-group.active-filter {
+  border-color: var(--accent-color);
+  background: rgba(100, 108, 255, 0.05);
+}
+
+.date-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+}
+
+.date-input {
+  color-scheme: dark;
+  background-color: var(--company-bg) !important;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.date-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+.date-reset-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.date-reset-btn:hover {
+  color: var(--error-color);
+}
+
+/* Time-range presets (issue #13) — quick "Last 15m / 1h / 12h / 24h" buttons. */
+.time-preset-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.time-preset-group.active-filter {
+  border-color: var(--accent-color);
+  background: rgba(100, 108, 255, 0.05);
+}
+
+.time-preset-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.25rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.time-preset-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-color);
+}
+
+.time-preset-btn--active {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+}
+
+.time-preset-clear {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0 0.25rem;
+}
+
+.time-preset-clear:hover {
+  color: var(--error-color);
+}
+
+/* Mutually exclusive time-range filters: dim the inactive side so the user
+   sees at a glance which one is in effect. Pointer events stay on — clicking
+   the dimmed side switches modes (the existing handlers clear the other
+   filter). Hover lifts the opacity to signal interactivity. */
+.time-preset-group.is-suppressed,
+.date-filter-group.is-suppressed {
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+}
+
+.time-preset-group.is-suppressed:hover,
+.date-filter-group.is-suppressed:hover {
+  opacity: 0.85;
+}
+
+/* Severity hierarchy toggle (issue #14) — flips between EXACT and >= modes. */
+.severity-mode-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  margin-left: 0.25rem;
+  transition: all 0.15s ease;
+}
+
+.severity-mode-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-color);
+}
+
+.severity-mode-btn--active {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+}
+
+.severity-reset-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: 0 0.25rem;
+}
+
+.severity-reset-btn:hover {
+  color: var(--error-color);
+}
+
+/* Phase 4 (issue #2): grouped-view toggle in LogsView. */
+.view-toggle-btn,
+.live-tail-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.3rem 0.65rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.view-toggle-btn:hover,
+.live-tail-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-color);
+}
+
+.view-toggle-btn--active {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+}
+
+/* Phase 5 (issue #12): live-tail toggle. The pulsing dot signals "live"
+   when polling is happening; turns flat (no animation) when paused so the
+   user can tell the difference between "active" and "active-but-paused".
+   color-mix lets us derive translucent tints from the design-system var
+   without hand-coding RGB triples. */
+.live-tail-btn--active {
+  background: color-mix(in srgb, var(--success-color) 15%, transparent);
+  color: var(--success-color);
+  border-color: var(--success-color);
+}
+
+.live-tail-btn .live-tail-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  display: inline-block;
+}
+
+.live-tail-btn--active .live-tail-dot {
+  background: var(--success-color);
+  animation: live-tail-pulse 1.4s ease-in-out infinite;
+}
+
+.live-tail-btn--active.live-tail-btn--paused .live-tail-dot {
+  animation: none;
+  opacity: 0.5;
+}
+
+@keyframes live-tail-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--success-color) 60%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+/* Phase 4 (issue #2): per-trace grouping blocks. */
+.log-trace-group {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  margin: 0.4rem 0;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.log-trace-group[open] {
+  background: rgba(100, 108, 255, 0.04);
+}
+
+.log-trace-group-summary {
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.log-trace-group-summary:hover {
+  color: var(--text-primary);
+}
+
+.log-trace-group-id {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  color: var(--accent-color, #646cff);
+  word-break: break-all;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.log-trace-group-count {
+  background: var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.05rem 0.45rem;
+  border-radius: 10px;
+  font-size: 0.7rem;
+}
+
+.log-trace-group-open {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.log-trace-group-open:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-color);
+}
+
+/* Severity badge in the trace-group header (server-side topSeverity). */
+.log-trace-group-sev {
+  font-family: monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  min-width: 48px;
+  text-align: center;
+}
+
+/* FATAL carries a heavier tint than ERROR. It is the one level whose colour cannot
+   be pushed further by hue alone on this background, so the fill does the work. */
+.log-trace-group-sev.sev-FATAL,
+.log-trace-group-sev.sev-CRITICAL {
+  color: var(--sev-fatal);
+  border-color: var(--sev-fatal);
+  background: color-mix(in srgb, var(--sev-fatal) 14%, transparent);
+}
+
+.log-trace-group-sev.sev-ERROR {
+  color: var(--sev-error);
+  border-color: var(--sev-error);
+  background: color-mix(in srgb, var(--sev-error) 8%, transparent);
+}
+
+.log-trace-group-sev.sev-WARN,
+.log-trace-group-sev.sev-WARNING {
+  color: var(--sev-warn);
+  border-color: var(--sev-warn);
+  background: color-mix(in srgb, var(--sev-warn) 8%, transparent);
+}
+
+.log-trace-group-sev.sev-INFO {
+  color: var(--sev-info);
+  border-color: var(--sev-info);
+  background: color-mix(in srgb, var(--sev-info) 5%, transparent);
+}
+
+.log-trace-group-sev.sev-DEBUG {
+  color: var(--sev-debug);
+}
+
+.log-trace-group-sev.sev-TRACE {
+  color: var(--sev-trace);
+}
+
+/* Tint the group card itself by worst severity so the user can spot
+   error-bearing traces at a glance without expanding. */
+.log-trace-group.sev-FATAL,
+.log-trace-group.sev-CRITICAL {
+  border-left: 3px solid var(--sev-fatal);
+}
+
+.log-trace-group.sev-ERROR {
+  border-left: 3px solid var(--sev-error);
+}
+
+.log-trace-group.sev-WARN,
+.log-trace-group.sev-WARNING {
+  border-left: 3px solid var(--sev-warn);
+}
+
+.log-trace-group-time {
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+/* Entry operation — the trace's root span name (e.g. the incoming HTTP
+   call). Occupies the MESSAGE column area between the timestamp and the
+   services chip; flex-grow lets it absorb the empty space without a
+   strict grid. Truncates with an ellipsis when the path is long; the
+   full string is in the title attribute. */
+.log-trace-group-entry-op {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: 1rem;
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Comma-separated services in the trace-group header. Pushed to the right
+   so it aligns visually under the SERVICE column header without forcing
+   the rest of the summary row into a strict grid layout. */
+.log-trace-group-services {
+  margin-left: auto;
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+  padding: 0.1rem 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 3px;
+}
+
+/* When the services chip is present it owns the auto-margin push; Open trace
+   should sit right next to it rather than fighting for the same space. */
+.log-trace-group-summary .log-trace-group-services+.log-trace-group-open {
+  margin-left: 0.5rem;
+}
+
+.log-trace-group-status {
+  padding: 1rem 1.25rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.log-trace-group-status--error {
+  color: var(--error-color);
+  font-style: normal;
+}
+
+.search-wrapper {
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 2;
+  border-radius: 50%;
+}
+
+.search-clear-btn:hover {
+  color: #000000;
+  background: rgba(239, 83, 80, 0.4);
+}
+
+.search-wrapper .filter-input {
+  padding-right: 32px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+}
+
+.filter-input {
+  background: #1e1e22;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  outline: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.filter-input:focus {
+  border-color: var(--accent-color);
+}
+
+/* Service multi-select — pill trigger + dropdown popover. Visual parity with
+   .filter-input so it slots into the toolbar without restyling neighbours. */
+.service-multiselect {
+  position: relative;
+  display: inline-block;
+}
+
+.service-multiselect-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  min-width: 110px;
+  text-align: left;
+}
+
+.service-multiselect-caret {
+  margin-left: auto;
+  opacity: 0.7;
+  font-size: 0.7rem;
+}
+
+.service-multiselect-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #1e1e22;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  padding: 0.25rem 0;
+}
+
+.service-multiselect-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.45rem 0.8rem;
+  background: transparent;
+  border: 0;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.service-multiselect-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.service-multiselect-option.is-checked {
+  color: var(--accent-color);
+}
+
+.service-multiselect-checkbox {
+  font-size: 0.85rem;
+  width: 1.1em;
+  display: inline-block;
+}
+
+@keyframes log-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.log-loading-bar {
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      var(--accent-color) 40%,
+      var(--accent-color) 60%,
+      transparent 100%);
+  background-size: 200% 100%;
+  animation:
+    log-shimmer 1.4s ease-in-out infinite,
+    fadeIn 0s 200ms both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  width: 100%;
+  height: 80%;
+  overflow-x: auto;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  background: var(--company-bg);
+}
+
+/* ── Log view (console/logfile-style stream) ──────────────────────────────
+   Each entry is a badge breadcrumb line + the full message on its own
+   non-wrapping line. Rows size to their content (max-content) so the single
+   horizontal scrollbar on .log-list--logview reveals long lines; min-width
+   keeps hover/zebra backgrounds spanning the full viewport. */
+.log-list--logview {
+  align-items: flex-start;
+}
+
+/* Grouped log view: the single-stream horizontal scroll does NOT apply — each
+   group scrolls on its own (see .log-trace-group-logs). Keep the group cards
+   stretched to full width (undo the flat view's flex-start) and don't let the
+   outer list scroll horizontally as one. */
+.log-list--logview-grouped {
+  align-items: stretch;
+  overflow-x: hidden;
+}
+
+/* Per-group horizontal scroll container — wraps the log rows inside one trace
+   group so scrolling a long line moves only that group's rows. */
+.log-trace-group-logs {
+  overflow-x: auto;
+}
+
+.log-lv {
+  min-width: 100%;
+  width: max-content;
+  padding: 0.45rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  box-sizing: border-box;
+}
+
+.log-lv.dimmed { opacity: 0.3; }
+.log-lv.highlighted { background: var(--hover-bg); }
+.log-lv:hover { background: var(--hover-bg); }
+
+/* Line 1 — badge breadcrumb, single line, never wraps. */
+.log-lv-meta {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  white-space: nowrap;
+}
+
+.log-lv-time {
+  color: #d0d0d5;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.log-lv-sev {
+  width: auto;
+  min-width: 54px;
+  text-align: left;
+  font-weight: 700;
+}
+
+.log-lv-trace,
+.log-lv-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.02rem 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.log-lv-trace { cursor: pointer; color: var(--info-color); }
+.log-lv-trace:hover { background: var(--hover-bg); }
+
+.log-lv-badge-k {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.log-lv-svc { color: #d0d0d5; font-weight: 500; }
+
+.log-lv-actions { display: inline-flex; }
+
+.log-lv-stack-toggle { margin-left: 0; }
+
+/* Line 2 — the full message, single line, no wrap (the container scrolls). */
+.log-lv-msg {
+  margin-top: 4px;
+  white-space: nowrap;
+  color: #e6e6ea;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+}
+
+.log-lv-msg mark { white-space: nowrap; }
+
+/* Stack trace inside log view: keep it readable on its own scroll, not
+   stretched to the (potentially huge) max-content row width. */
+.log-lv-stacktrace {
+  width: auto;
+  max-width: 1100px;
+  margin-top: 6px;
+}
+
+.log-line,
+.log-header {
+  display: flex;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0;
+  transition: background-color 0.2s ease;
+  white-space: pre-wrap;
+  gap: 1.5rem;
+  align-items: flex-start;
+  width: 100%;
+}
+
+/* Allow the expanded stack-trace panel to wrap onto its own full-width line
+   below the columns. The fixed-width columns + flex:1 message cell already
+   fill 100%, so normal rows are unaffected. */
+.log-line {
+  flex-wrap: wrap;
+}
+
+.log-header {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+  padding: 0.85rem 1.5rem;
+  border-radius: 0;
+  align-items: center;
+}
+
+.log-header span {
+  font-weight: 700 !important;
+}
+
+.log-line.dimmed {
+  opacity: 0.3;
+}
+
+.log-line.highlighted {
+  background: var(--hover-bg);
+}
+
+.log-timestamp {
+  width: 185px;
+  flex-shrink: 0;
+  color: #d0d0d5;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.log-service {
+  width: 140px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: #d0d0d5;
+}
+
+.log-level {
+  width: 90px;
+  flex-shrink: 0;
+  font-weight: 600;
+  text-align: center;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.log-level.FATAL,
+.log-level.CRITICAL {
+  color: var(--sev-fatal);
+}
+
+.log-level.ERROR {
+  color: var(--sev-error);
+}
+
+.log-level.WARN,
+.log-level.WARNING {
+  color: var(--sev-warn);
+}
+
+.log-level.INFO {
+  color: var(--sev-info);
+}
+
+.log-level.DEBUG {
+  color: var(--sev-debug);
+}
+
+.log-level.TRACE {
+  color: var(--sev-trace);
+}
+
+.log-message {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  color: #d0d0d5;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.message-cell {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Source location row: class · method · line, each as a labelled pair so
+   the row reads as user-facing metadata rather than a smushed code locator. */
+.log-source-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  margin-bottom: 4px;
+}
+
+.log-source-pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.log-source-label {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+.log-source-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 0.78rem;
+  word-break: break-all;
+  min-width: 0;
+}
+
+.message-cell pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #d0d0d5;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  font-weight: 500;
+}
+
+/* Exception block under the message — type/message header + collapsible
+   stack trace. Rendered whenever the log carries exception attributes; the
+   stack trace itself is backend-gated to error-class rows. */
+.log-exception {
+  margin-top: 6px;
+}
+
+.log-exception-head {
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.log-exception-type {
+  color: var(--error-color);
+  font-weight: 600;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+}
+
+.log-exception-msg {
+  color: var(--text-secondary);
+}
+
+.log-stacktrace-toggle {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding: 2px 8px;
+}
+
+.log-stacktrace-toggle:hover {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.log-stacktrace {
+  /* Full-width: flex child that takes the whole row line on its own. */
+  flex: 0 0 100%;
+  width: 100%;
+  margin: 8px 0 2px;
+  padding: 8px 10px;
+  max-height: 360px;
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  /* `pre` (not pre-wrap) so frames keep their indentation and don't wrap
+     mid-line; the box scrolls horizontally for long frames. */
+  white-space: pre;
+  tab-size: 2;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: #767676;
+}
+
+.log-trace-link {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.35rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.log-trace-link-label {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.log-trace-link-id {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 0.78rem;
+  word-break: break-all;
+  white-space: normal;
+}
+
+.log-action {
+  width: 110px;
+  flex-shrink: 0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.action-btn {
+  background: none;
+  border: 1px solid transparent;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent-color);
+  border-color: rgba(187, 134, 252, 0.2);
+}
+
+.action-btn.copy-feedback::after {
+  content: "Copied!";
+  position: absolute;
+  top: -25px;
+  right: 0;
+  background: var(--accent-color);
+  color: #008000;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  animation: fadeUp 1s ease-out forwards;
+}
+
+@keyframes fadeUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+mark {
+  background: rgba(187, 134, 252, 0.3);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.pagination-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 1.5rem;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 100%;
+}
+
+.logs-per-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.logs-per-page select {
+  background: var(--company-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+#prev-page-btn,
+#next-page-btn {
+  background: #2a2a2e;
+  border-color: #444;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+#prev-page-btn:hover:not(:disabled),
+#next-page-btn:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  background: #333338;
+  color: var(--accent-color);
+}
+
+#prev-page-btn:active:not(:disabled),
+#next-page-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.trace-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  font-weight: 500;
+  gap: 0.5rem;
+  transition: color 0.2s;
+}
+
+.back-button:hover {
+  color: var(--text-primary);
+}
+
+.trace-header {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.trace-id-label {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.trace-summary {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.trace-id-copy {
+  cursor: pointer;
+  color: var(--accent-color);
+}
+
+.trace-id-copy:hover {
+  text-decoration: underline;
+}
+
+.trace-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+}
+
+.trace-header-row,
+.trace-step {
+  display: flex;
+  align-items: flex-start;
+  /* Changed from center to align multi-line text to the top */
+  gap: 1.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+.trace-header-row {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+  /* Headers should still be vertically centered for consistency */
+}
+
+.trace-step {
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.2s;
+  margin-bottom: 0.25rem;
+}
+
+.trace-step:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Trace Column Definitions */
+.trace-col-time {
+  width: 140px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 0.25rem;
+}
+
+.trace-col-trace-id {
+  width: 100px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 0.25rem;
+}
+
+.trace-col-span-id {
+  width: 100px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 0.25rem;
+}
+
+.trace-col-name {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  /* Enable wrapping to prevent 'data loss' */
+  line-height: 1.4;
+}
+
+.trace-col-operation {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  padding: 0 0.5rem;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  /* Enable wrapping to prevent 'data loss' */
+}
+
+.trace-col-duration {
+  width: 100px;
+  text-align: right;
+  color: var(--info-color);
+  font-weight: 500;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding-top: 0.25rem;
+}
+
+.copy-badge {
+  background: #1e1e22;
+  border: 1px solid var(--border-color);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-badge:hover {
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+/* --- Tree View Styles --- */
+
+.tree-view-section {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1rem;
+}
+
+/* 3-column table layout wrapper */
+.trace-execution-tree {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.85rem;
+}
+
+/* Grid header: must match .tree-node-row grid exactly */
+.trace-tree-table-header {
+  display: grid;
+  grid-template-columns: 1fr 120px 180px 100px;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tree-node-container {
+  position: relative;
+}
+
+.tree-node-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 180px 100px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  min-height: 36px;
+}
+
+.tree-node-row:hover {
+  background-color: var(--hover-bg);
+}
+
+.slow-node>.tree-node-row {
+  background-color: rgba(255, 152, 0, 0.05);
+}
+
+/* col-operation: fills the first grid column including all its padding logic */
+.col-operation {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* col-type: second column */
+.col-type {
+  display: flex;
+  align-items: center;
+  padding-left: 0.5rem;
+  min-width: 0;
+}
+
+/* col-service: third column */
+.col-service {
+  display: flex;
+  align-items: center;
+  padding-left: 0.5rem;
+  color: var(--accent-color);
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* col-duration: right-aligned third column */
+.col-duration {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.75rem;
+  color: var(--info-color);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.slow-node .tree-node-row {
+  background-color: rgba(255, 152, 0, 0.05);
+}
+
+.slow-node>.tree-node-row:hover {
+  background-color: rgba(255, 152, 0, 0.1);
+}
+
+.tree-node-toggle {
+  width: 20px;
+  display: flex;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  flex-shrink: 0;
+}
+
+.toggle-icon {
+  margin-top: 1px;
+}
+
+.toggle-empty {
+  opacity: 0.25;
+}
+
+.tree-node-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Badges */
+.tree-badge {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.badge-http {
+  background-color: #3949ab;
+}
+
+.badge-mongodb {
+  background-color: #2e7d32;
+}
+
+.badge-mssql {
+  background-color: #e65100;
+}
+
+.badge-gray {
+  background-color: #546e7a;
+}
+
+.badge-default {
+  background-color: #555;
+}
+
+.tree-badge-status {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.badge-success {
+  background-color: rgba(46, 125, 50, 0.25);
+  color: #ffffff;
+  border: 1px solid rgba(46, 125, 50, 0.5);
+}
+
+.badge-error {
+  background-color: rgba(211, 47, 47, 0.25);
+  color: #ffffff;
+  border: 1px solid rgba(211, 47, 47, 0.5);
+}
+
+.tree-badge-type {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.tree-node-name {
+  color: #e0e0e0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.span-copy-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  opacity: 0;
+  cursor: pointer;
+  padding: 4px;
+  margin-left: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  vertical-align: middle;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.tree-node-row:hover .span-copy-btn {
+  opacity: 0.6;
+}
+
+.span-copy-btn:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--accent-light);
+}
+
+.span-copy-btn.copied {
+  color: #4caf50 !important;
+  opacity: 1 !important;
+}
+
+.copy-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--company-bg);
+  color: #4caf50;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  border: 1px solid #4caf50;
+  pointer-events: none;
+  animation: tooltipFade 1.2s ease-out forwards;
+  z-index: 100;
+  margin-bottom: 5px;
+}
+
+@keyframes tooltipFade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 5px);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  80% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+}
+
+
+.tree-node-target {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* indentation guide line */
+.tree-children-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Operation expand details */
+.tree-node-operation-details {
+  padding: 6px 1rem 8px;
+  background-color: rgba(0, 0, 0, 0.18);
+  border-left: 2px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.operation-code-text {
+  color: #b0bec5;
+  font-family: 'Fira Mono', 'Consolas', monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.tree-node-view-more {
+  padding: 6px 0;
+  font-size: 0.8rem;
+  color: var(--accent-light);
+  cursor: pointer;
+  display: inline-block;
+}
+
+.tree-node-view-more:hover {
+  text-decoration: underline;
+}
+
+/* Summary bar */
+.trace-root-summary {
+  background: var(--surface-color);
+  padding: 10px 15px;
+  border-radius: 6px;
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--border-color);
+}
+
+/* Slow indicator row */
+.slow-node-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 6px 1rem;
+  background: rgba(255, 152, 0, 0.06);
+  border-top: 1px solid rgba(255, 152, 0, 0.2);
+  font-size: 0.8rem;
+  color: #000000;
+}
+
+/* --- Custom Date Picker Styles --- */
+.custom-datepicker-container {
+  position: relative;
+  display: inline-block;
+}
+
+.datepicker-popup {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  background: #242424;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  width: 280px;
+  font-family: var(--font-sans);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.datepicker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.datepicker-nav-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1.1rem;
+}
+
+.datepicker-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent-color);
+}
+
+.datepicker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+
+.datepicker-day-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.datepicker-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.datepicker-day:hover:not(.empty) {
+  background: rgba(187, 134, 252, 0.15);
+  color: var(--accent-color);
+}
+
+.datepicker-day.selected {
+  background: var(--accent-color);
+  color: #000;
+  font-weight: 700;
+}
+
+.datepicker-day.today {
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+.datepicker-day.empty {
+  cursor: default;
+}
+
+.datepicker-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+}
+
+.datepicker-footer-btn {
+  font-size: 0.75rem;
+  color: var(--accent-color);
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.datepicker-footer-btn:hover {
+  text-decoration: underline;
+}
+
+.date-display-input {
+  background: #1e1e22;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  min-width: 130px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.date-display-input:hover {
+  border-color: var(--accent-color);
+}
+
+/* --- Enterprise Trace Details View (.trace-view) - Refined to Image --- */
+
+/* Compact Summary Header */
+.trace-summary-header {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--trace-border);
+  margin-bottom: 0.5rem;
+}
+
+.trace-summary-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.trace-summary-row {
+  display: flex;
+  gap: 1.5rem;
+  color: #ccc;
+  font-size: 0.85rem;
+}
+
+.trace-summary-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #888;
+  margin-right: 0.4rem;
+}
+
+.trace-summary-value {
+  font-family: var(--font-mono);
+  color: #fff;
+  font-weight: 500;
+}
+
+/* Table Layout */
+
+.trace-row {
+  display: grid;
+  grid-template-columns: 2fr 100px 180px 100px 120px;
+  align-items: center;
+  padding: 0.4rem 1rem;
+  min-height: 40px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+/* Badges - Side by Side */
+.trace-badges-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-right: 0.75rem;
+}
+
+/* Database Specific Colors */
+
+/* Status Badges */
+
+/* Icons */
+.trace-icon {
+  margin-right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.icon-warn {
+  color: var(--trace-warn);
+}
+
+.icon-info {
+  color: var(--trace-info);
+}
+
+.icon-error {
+  color: var(--trace-error);
+}
+
+.icon-debug {
+  color: var(--trace-accent);
+}
+
+/* Tree Indentation */
+.trace-op-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  position: relative;
+}
+
+.trace-connector-line {
+  position: absolute;
+  left: 0.75rem;
+  top: -20px;
+  bottom: 20px;
+  width: 1px;
+  background: #333;
+  opacity: 0.5;
+}
+
+/* View More Row */
+.trace-view-more {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0.5rem 4rem;
+  font-size: 0.75rem;
+  color: #3f51b5;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.trace-view-more:hover {
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+
+  .trace-table-header,
+  .trace-row {
+    grid-template-columns: 1fr 100px 100px 100px;
+  }
+}
+
+/* Interactive Summary Chips */
+
+.trace-summary-item.active-filter {
+  background: rgba(179, 136, 255, 0.15);
+  border-color: var(--trace-accent);
+  color: var(--trace-accent);
+}
+
+/* Detail Panel */
+
+@keyframes traceSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Row Highlight when Expanded */
+.trace-row.is-expanded {
+  background: rgba(179, 136, 255, 0.03);
+  box-shadow: inset 2px 0 0 var(--trace-accent);
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.5rem;
+  border-radius: 6px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  color: var(--text-primary);
+  background: var(--company-bg);
+  box-shadow: 0 0 8px rgba(187, 134, 252, 0.2);
+}
+
+.pagination-btn.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #242424;
+  font-weight: 600;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.pagination-ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   ENTERPRISE TRACE DETAILS VIEW (NEW & IMPROVED)
+   ========================================================================== */
+.trace-view {
+  --trace-bg: #0b0b0d;
+  --trace-surface: #121214;
+  --trace-border: #242426;
+  --trace-accent: #b388ff;
+  --trace-success: #4caf50;
+  --trace-warn: #ffb74d;
+  --trace-error: #ef5350;
+  --trace-info: #03dac6;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--bg-main);
+  min-height: 100vh;
+  color: var(--text-main);
+  padding: 24px;
+  font-family: var(--font-sans);
+}
+
+/* Header & Summary */
+.trace-header-premium {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.trace-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.trace-path-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trace-path {
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-main);
+}
+
+.trace-id-sub {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
+.trace-meta-pills {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.trace-summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.trace-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.05);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.trace-summary-item:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.trace-summary-item.active {
+  background: var(--trace-accent);
+  color: white;
+}
+
+.summary-dot {
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.meta-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.meta-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.meta-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.summary-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.summary-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+/* Execution Tree */
+.trace-tree-premium {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.trace-table-header,
+.trace-row {
+  display: grid;
+  grid-template-columns: 1fr 100px 180px 100px 100px;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.15s;
+  cursor: pointer;
+  position: relative;
+}
+
+.trace-table-header {
+  display: grid;
+  grid-template-columns: 2fr 100px 180px 100px 120px;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--trace-border);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: default;
+}
+
+.trace-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.trace-row.row-focused {
+  background: rgba(98, 0, 238, 0.08);
+}
+
+.trace-row.row-group-header {
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 3px solid var(--trace-accent);
+  height: 48px;
+  margin-top: 4px;
+}
+
+.op-group-title {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 0.95rem;
+}
+
+.trace-col-op {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.trace-indent {
+  height: 100%;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  margin-right: 12px;
+}
+
+.trace-chevron {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  transition: transform 0.2s;
+}
+
+.trace-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.trace-op-name {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Badges */
+/* Badges with Spec Colors */
+.trace-badge {
+  white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-type-http {
+  background: #388bfd;
+  color: #000000;
+}
+
+.badge-type-mongodb {
+  background: #3fb950;
+  color: #000000;
+}
+
+.badge-type-mssql {
+  background: #f78166;
+  color: #000000;
+}
+
+.badge-type-external {
+  background: #39c5bb;
+  color: black;
+}
+
+.badge-type-internal {
+  background: #6e7681;
+  color: white;
+}
+
+.badge-type-log {
+  border: 1px solid #444;
+  background: #484f58;
+  color: white;
+}
+
+.badge-status-success {
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  background: #2ea043;
+  color: #000000;
+}
+
+.badge-status-warn {
+  border: 1px solid rgba(255, 183, 77, 0.4);
+  background: #d29922;
+  color: #000000;
+}
+
+.badge-status-error {
+  border: 1px solid rgba(239, 83, 80, 0.4);
+  background: #f85149;
+  color: #000000;
+}
+
+.badge-status-info {
+  background: #388bfd;
+  color: #000000;
+}
+
+.badge-status-debug {
+  background: #8957e5;
+  color: white;
+}
+
+.trace-duration-cell {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.trace-chevron-container {
+  width: 20px;
+  display: flex;
+  justify-content: center;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.trace-col-type,
+.trace-col-service,
+.trace-col-severity {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 8px;
+}
+
+.trace-col-service {
+  width: 180px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #a5d6ff;
+  font-family: var(--font-mono);
+}
+
+/* Detail Panel */
+.trace-detail-panel {
+  padding: 1rem 1.5rem 1.5rem 4rem;
+  margin: 4px 16px 16px 64px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.trace-detail-content {
+  background: #000;
+  border-radius: 6px;
+  border: 1px solid var(--trace-border);
+  word-break: break-all;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+  padding: 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+  color: #e6edf3;
+  margin: 0;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Scrollbar for Detail Panel */
+.trace-detail-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.trace-detail-content::-webkit-scrollbar-thumb {
+  background: #484f58;
+  border-radius: 10px;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar styling.
+
+   This rule used to read --bg-main for the track and --text-dim for the thumb's
+   hover state. NEITHER NAME IS DECLARED ANYWHERE IN THIS APPLICATION — grep both
+   and every hit is a use, never a declaration. An undeclared custom property
+   makes the whole declaration invalid at computed-value time, so each fell back
+   to the property's initial value: the track went transparent (harmless, and it
+   read as intentional) and the thumb's hover colour went transparent too, which
+   meant the thumb VANISHED the moment you pointed at it — on every screen. It
+   survived this long because a scrollbar that disappears under the cursor is
+   invisible to the person moving the cursor.
+
+   Now pointed at the tokens :root actually declares. The hover step is
+   --text-secondary rather than a new lighter grey: it is the next value up the
+   ladder from --border-color, so the thumb brightens on hover instead of either
+   vanishing or jumping to full white.
+
+   The two phantom names are NOT declared as aliases to "fix" them globally,
+   because nine other uses remain — all on the Traces screen (.trace-view,
+   .trace-table-header, .meta-label, .trace-chevron and friends), all of them
+   currently inheriting their parent's colour where a dim grey was intended.
+   Declaring the aliases would silently restyle that screen, which is a separate
+   decision from this one. Fix them at their call sites when Traces is next
+   touched; do not resurrect the names. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+@media (max-width: 1024px) {
+
+  .trace-tree-header,
+  .trace-row {
+    grid-template-columns: 1fr 100px 100px;
+  }
+
+  .trace-col-service {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   NEW ENTERPRISE TRACE VIEW  (.tv-*)
+   ========================================================================== */
+
+.tv-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: #0a0a0c;
+  min-height: 100vh;
+  color: #e0e0e0;
+  font-family: var(--font-sans);
+}
+
+.tv-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 4rem;
+  color: #888;
+}
+
+.tv-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #2c2c30;
+  border-top-color: #bb86fc;
+  border-radius: 50%;
+  animation: tvSpin 0.8s linear infinite;
+}
+
+@keyframes tvSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tv-empty {
+  padding: 4rem;
+  text-align: center;
+  color: #555;
+}
+
+.tv-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+  font-family: var(--font-sans);
+}
+
+.tv-back-btn:hover {
+  color: #e0e0e0;
+}
+
+.tv-header-card {
+  background: #141417;
+  border: 1px solid #2c2c30;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.tv-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.tv-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tv-operation-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #f0f0f5;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.tv-trace-id-sub {
+  font-size: 0.75rem;
+  color: #666;
+  font-family: var(--font-mono);
+}
+
+.tv-header-badges {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.tv-meta-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #2c2c30;
+  border-radius: 8px;
+  padding: 8px 14px;
+  min-width: 90px;
+}
+
+.tv-meta-badge-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tv-meta-badge-value {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e0e0e0;
+}
+
+.tv-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 1rem;
+  border-top: 1px solid #2c2c30;
+}
+
+.tv-summary-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.tv-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 3px 10px 3px 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-mono);
+}
+
+.tv-summary-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #000000;
+}
+
+.tv-chip-active {
+  background: color-mix(in srgb, var(--chip-color, #888) 20%, transparent) !important;
+  border-color: var(--chip-color, #888) !important;
+  color: #000000!important;
+}
+
+.tv-summary-clear {
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 20px;
+  padding: 3px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: 4px;
+  font-family: var(--font-mono);
+}
+
+.tv-summary-clear:hover {
+  border-color: #888;
+  color: #fff;
+}
+
+.tv-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tv-error-banner {
+  background: rgba(248, 81, 73, 0.08);
+  border: 1px solid rgba(248, 81, 73, 0.35);
+  border-left: 4px solid #f85149;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+}
+
+.tv-error-banner-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #f85149;
+  margin-bottom: 0.75rem;
+}
+
+.tv-error-x {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #f85149;
+  color: #000000;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.tv-error-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.tv-error-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tv-error-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #f85149;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tv-error-val {
+  font-size: 0.85rem;
+  color: #e0e0e0;
+}
+
+.tv-mono {
+  font-family: var(--font-mono);
+}
+
+.tv-tree-card {
+  background: #141417;
+  border: 1px solid #2c2c30;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+}
+
+.tv-tree-header {
+  display: grid;
+  grid-template-columns: 175px 1fr 90px 160px 90px 100px;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid #2c2c30;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #767676;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  backdrop-filter: blur(10px);
+}
+
+.tv-th-dur {
+  text-align: right;
+}
+
+.tv-node {
+  display: flex;
+  flex-direction: column;
+}
+
+.tv-row {
+  display: grid;
+  grid-template-columns: 175px 1fr 90px 160px 90px 100px;
+  align-items: center;
+  min-height: 40px;
+  padding: 0.35rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+}
+
+.tv-row:hover {
+  background: rgba(88, 166, 255, 0.055);
+}
+
+.tv-row-group {
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 3px solid #b388ff;
+  margin-top: 2px;
+  min-height: 46px;
+}
+
+.tv-row-group:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tv-row-type-thread {
+  background: linear-gradient(90deg, rgba(210, 168, 255, 0.12), rgba(210, 168, 255, 0.03));
+  border-left-color: #d2a8ff;
+  border-top: 1px solid rgba(210, 168, 255, 0.16);
+  border-bottom-color: rgba(210, 168, 255, 0.14);
+}
+
+.tv-row-type-thread:hover {
+  background: linear-gradient(90deg, rgba(210, 168, 255, 0.18), rgba(88, 166, 255, 0.05));
+}
+
+.tv-row-type-thread .tv-op-name-group {
+  color: #f2e7ff;
+}
+
+.tv-row-focused {
+  background: rgba(98, 0, 238, 0.07) !important;
+}
+
+.tv-cell-time {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #999;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  padding-right: 8px;
+}
+
+.tv-cell-span {
+  display: flex;
+  align-items: center;
+  padding-right: 8px;
+  min-width: 0;
+}
+
+/* Logs-by-span mode adds a SPAN ID column between TIMESTAMP and OPERATION
+   and reclaims width from peripheral columns so deeply-nested OPERATION
+   text has room to breathe. SPAN ID is sized for a full 16-char OTel span
+   id rendered in the monospace chip. List / Group-by-type keep the default
+   6-column layout above. */
+.tv-tree-card--with-span .tv-tree-header,
+.tv-tree-card--with-span .tv-row {
+  grid-template-columns: 175px 165px 1fr 80px 130px 80px 80px;
+}
+
+/* In logs-tree mode the SPAN ID chip carries a full 16-char OTel span id —
+   widen the chip and use the full row width budget for it. */
+.tv-tree-card--with-span .tv-cell-span .tv-span-id {
+  margin-left: 0;
+  letter-spacing: 0;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.7rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv-tree-card--with-span .tv-row:not(.tv-row-group) .tv-cell-op {
+  border-left: 1px solid rgba(110, 118, 129, 0.22);
+}
+
+/* In logs-tree mode the log message can run longer before we clamp it —
+   when we do clamp it, show 4 lines instead of 2 so the user gets enough
+   context to decide whether to expand. */
+.tv-tree-card--with-span .tv-log-message-clamped {
+  -webkit-line-clamp: 4;
+}
+
+.tv-cell-op {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  position: relative;
+}
+
+.tv-connector {
+  position: absolute;
+  top: -20px;
+  bottom: 20px;
+  width: 1px;
+  background: rgba(139, 148, 158, 0.42);
+}
+
+.tv-chevron {
+  width: 16px;
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  color: #8b949e;
+  margin-top: 3px;
+}
+
+.tv-chevron-active {
+  color: #c9d1d9;
+}
+
+.tv-sev-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.tv-op-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tv-op-name {
+  font-size: 0.85rem;
+  color: #e0e0e0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv-op-name-group {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #f0f0f5;
+}
+
+.tv-group-count {
+  color: #999;
+  font-weight: 400;
+}
+
+.tv-op-sub {
+  font-size: 0.73rem;
+  color: #8b949e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv-cell-type {
+  display: flex;
+  align-items: center;
+}
+
+.tv-cell-service {
+  font-size: 0.8rem;
+  color: #a5d6ff;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 6px;
+}
+
+.tv-cell-status {
+  display: flex;
+  align-items: center;
+}
+
+.tv-cell-dur {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: #aaa;
+  white-space: nowrap;
+}
+
+.tv-dash {
+  color: #444;
+}
+
+.tv-type-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.tv-badge {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.67rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tv-badge-success {
+  background: #2ea043;
+  color: #000000;
+}
+
+.tv-badge-error {
+  background: #f85149;
+  color: #000000;
+}
+
+.tv-badge-warn {
+  background: #d29922;
+  color: #000000;
+}
+
+.tv-badge-info {
+  background: #388bfd;
+  color: #000000;
+}
+
+.tv-badge-debug {
+  background: #8957e5;
+  color: #fff;
+}
+
+.tv-badge-unknown {
+  background: #444;
+  color: #adbac7;
+}
+
+.tv-detail-panel {
+  margin: 4px 16px 12px 0;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  overflow: hidden;
+  animation: tvSlideDown 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes tvSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tv-detail-label {
+  padding: 6px 14px;
+  background: rgba(179, 136, 255, 0.08);
+  border-bottom: 1px solid #30363d;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #000000;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.tv-detail-code {
+  padding: 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: #c9d1d9;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+  max-height: 420px;
+  overflow-y: auto;
+  margin: 0;
+}
+
+.tv-detail-code::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.tv-detail-code::-webkit-scrollbar-thumb {
+  background: #484f58;
+  border-radius: 6px;
+}
+
+.tv-children {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Logs-tree mode: brighten the per-row connector and add a horizontal stub
+   from the trunk to the chevron, so the tree structure is obvious. The trunk
+   is the existing .tv-connector — a 1px absolute line inside each child's OP
+   cell at x = (level-1) * 0.75rem + 1rem. Because every nested row's
+   connector sits in the same column and the segments meet at row mid-line,
+   stacking them creates a continuous trunk. The ::after pseudo adds the
+   horizontal elbow over to the chevron (0.5rem to the right). */
+.tv-tree-card--with-span .tv-connector {
+  background: rgba(179, 136, 255, 0.55);
+}
+
+.tv-tree-card--with-span .tv-connector::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 0.5rem;
+  height: 1px;
+  background: rgba(179, 136, 255, 0.55);
+}
+
+/* Parent context chip: rendered under the span name in logs-tree mode to
+   show which span this span is nested under. Intentionally muted so it
+   doesn't compete with the span name. */
+.tv-parent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.66rem;
+  font-family: var(--font-mono);
+  color: #000000;
+  background: rgba(179, 136, 255, 0.37);
+  border: 1px solid rgba(179, 136, 255, 0.18);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-top: 2px;
+  max-width: 28ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+@media (max-width: 1024px) {
+
+  .tv-tree-header,
+  .tv-row {
+    grid-template-columns: 175px 1fr 80px 80px 80px;
+  }
+
+  .tv-cell-service,
+  .tv-th-service {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+
+  .tv-tree-header,
+  .tv-row {
+    grid-template-columns: 160px 1fr 80px 80px;
+  }
+
+  .tv-cell-type,
+  .tv-th-type,
+  .tv-cell-span,
+  .tv-th-span {
+    display: none;
+  }
+}
+
+/* ── TraceView v2: toolbar, view toggle, waterfall, selection ─────────────── */
+
+.tv-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  padding: 0.6rem 0.85rem;
+  background: #141417;
+  border: 1px solid #2c2c30;
+  border-radius: 10px;
+}
+
+.tv-toolbar-search {
+  position: relative;
+  flex: 1 1 280px;
+  display: flex;
+  align-items: center;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 0 8px 0 10px;
+  min-height: 36px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.tv-toolbar-search:focus-within {
+  border-color: #58a6ff;
+  background: #101720;
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.15);
+}
+
+.tv-search-icon {
+  color: #6e7681;
+  font-size: 0.95rem;
+  margin-right: 6px;
+  user-select: none;
+}
+
+.tv-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e0e0e0;
+  font-size: 0.85rem;
+  font-family: var(--font-sans);
+  padding: 0 4px;
+  height: 100%;
+}
+
+.tv-search-input::placeholder {
+  color: #555;
+}
+
+.tv-search-clear {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 1.05rem;
+  cursor: pointer;
+  padding: 0 6px;
+  line-height: 1;
+}
+
+.tv-search-clear:hover {
+  color: #fff;
+}
+
+.tv-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Issue #7: span-level severity filter in TraceView toolbar. */
+.tv-level-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 12px;
+}
+
+.tv-level-select {
+  background: var(--company-bg, #1a1a2e);
+  color: var(--text-primary, #eee);
+  border: 1px solid var(--border-color, #2d2d3d);
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tv-level-select:focus {
+  outline: none;
+  border-color: var(--accent-color, #646cff);
+}
+
+.tv-view-toggle-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #666;
+  letter-spacing: 0.09em;
+  margin-right: 8px;
+}
+
+.tv-radio {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  background: rgba(255, 255, 255, 0.33);
+  border: 1px solid #2c2c30;
+  min-height: 34px;
+  padding: 5px 12px;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.tv-radio:first-of-type {
+  border-radius: 6px 0 0 6px;
+}
+
+.tv-radio:last-of-type {
+  border-radius: 0 6px 6px 0;
+  border-left: none;
+}
+
+.tv-radio:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #767676;
+}
+
+.tv-radio input {
+  display: none;
+}
+
+.tv-radio-active {
+  background: color-mix(in srgb, #b388ff 20%, transparent);
+  border-color: #b388ff;
+  color: #000000;
+}
+
+.tv-radio-active:hover {
+  background: color-mix(in srgb, #b388ff 28%, transparent);
+}
+
+
+
+.tv-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: #2c2c30;
+  margin: 0 10px;
+  align-self: center;
+}
+.tv-expand-collapse-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tv-icon-btn {
+  background: rgba(255, 255, 255, 0.03);
+  color: #767676;
+  border: 1px solid #2c2c30;
+  border-radius: 6px;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease-in-out;
+  padding: 0;
+  outline: none;
+}
+
+.tv-icon-btn:hover {
+  background: rgba(179, 136, 255, 0.12);
+  color: var(--trace-accent, #b388ff);
+  border-color: var(--trace-accent, #b388ff);
+  box-shadow: 0 0 8px rgba(179, 136, 255, 0.35);
+}
+
+.tv-icon-btn:active {
+  transform: translateY(1px);
+}
+
+
+/* Error banner: jump-to-span button */
+.tv-error-jump {
+  margin-left: auto;
+  background: rgba(248, 81, 73, 0.15);
+  border: 1px solid rgba(248, 81, 73, 0.5);
+  color: #000000;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+
+.tv-error-jump:hover {
+  background: rgba(248, 81, 73, 0.28);
+  color: #000000;
+}
+
+/* Selected row highlight (driven from TraceView selection state) */
+.tv-row-selected {
+  background: rgba(88, 166, 255, 0.12) !important;
+  box-shadow: inset 3px 0 0 #58a6ff;
+}
+
+.tv-row-selected:hover {
+  background: rgba(88, 166, 255, 0.18) !important;
+}
+
+.tv-empty-tree {
+  padding: 2rem;
+  text-align: center;
+  color: #555;
+  font-size: 0.85rem;
+}
+
+/* ── Waterfall ────────────────────────────────────────────────────────────── */
+
+.tv-waterfall-card {
+  background: #141417;
+  border: 1px solid #2c2c30;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.tv-waterfall-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 1rem;
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid #2c2c30;
+}
+
+.tv-waterfall-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #888;
+}
+
+.tv-waterfall-total {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #888;
+}
+
+/* Auto-zoom badge in the waterfall header — signals the bar track is
+   re-based to a sub-range of the trace (the dominant root sits outside). */
+.tv-waterfall-zoom-tag {
+  display: inline-block;
+  background: rgba(179, 136, 255, 0.18);
+  border: 1px solid rgba(179, 136, 255, 0.45);
+  color: #000000;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* Context strip — thin overlay above the rows that conveys the zoomed
+   window's position within the full trace span. Highlighted segment is
+   the focus window; remaining width represents the dominant root's reach
+   that's visually clipped from the bar track itself. */
+.tv-waterfall-context-strip {
+  position: relative;
+  height: 4px;
+  margin: 6px 1rem 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+}
+
+.tv-waterfall-context-window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #b388ff;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+/* Header expand/collapse toggle button — appears in the right side of the
+   header next to the duration summary. */
+.tv-waterfall-toggle {
+  margin-left: 12px;
+  background: transparent;
+  border: 1px solid #2c2c30;
+  border-radius: 4px;
+  padding: 2px 9px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tv-waterfall-toggle:hover {
+  border-color: #555;
+  color: #ccc;
+}
+
+/* Collapsed mode: a single ~40px row with proportional type-colored
+   segments. Each segment is a button so users can filter by clicking. */
+.tv-waterfall-collapsed .tv-waterfall-header {
+  border-bottom: none;
+}
+
+.tv-waterfall-strip {
+  display: flex;
+  height: 40px;
+  margin: 0 1rem 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.tv-waterfall-strip-seg {
+  position: relative;
+  height: 100%;
+  border: none;
+  padding: 0 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  transition: filter 0.15s, opacity 0.15s;
+  /* Tiny seam between segments so they're distinguishable */
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.25);
+}
+
+.tv-waterfall-strip-seg:hover {
+  filter: brightness(1.18);
+}
+
+.tv-waterfall-strip-seg-active {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.tv-waterfall-strip-seg-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tv-waterfall-rows {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.tv-waterfall-rows::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tv-waterfall-rows::-webkit-scrollbar-thumb {
+  background: #484f58;
+  border-radius: 6px;
+}
+
+.tv-wf-row {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  align-items: center;
+  height: 24px;
+  padding: 0 1rem 0 0.5rem;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-left: 3px solid transparent;
+}
+
+.tv-wf-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tv-wf-row-selected {
+  background: rgba(88, 166, 255, 0.12);
+  border-left-color: #58a6ff;
+}
+
+.tv-wf-row-selected:hover {
+  background: rgba(88, 166, 255, 0.18);
+}
+
+.tv-wf-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.tv-wf-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tv-wf-label-text {
+  font-size: 0.78rem;
+  color: #d0d0d0;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv-wf-track {
+  position: relative;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 3px;
+}
+
+.tv-wf-bar {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  min-width: 3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+  transition: filter 0.12s;
+}
+
+.tv-wf-row:hover .tv-wf-bar {
+  filter: brightness(1.15);
+}
+
+.tv-wf-bar-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .tv-wf-row {
+    grid-template-columns: 140px 1fr;
+  }
+}
+
+/* ── Log rows: full-text reading layout (replaces table grid for LOG type) ── */
+
+.tv-log-row {
+  display: grid;
+  grid-template-columns: 175px 1fr;
+  align-items: start;
+  padding: 8px 1rem 8px 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: background 0.12s, box-shadow 0.12s;
+  position: relative;
+}
+
+.tv-tree-card--with-span .tv-log-row {
+  grid-template-columns: 175px 165px 1fr;
+}
+
+.tv-log-row:hover {
+  background: rgba(88, 166, 255, 0.045);
+}
+
+.tv-log-row-focused {
+  background: rgba(98, 0, 238, 0.06);
+}
+
+.tv-log-row-selected {
+  background: rgba(88, 166, 255, 0.12) !important;
+  box-shadow: inset 3px 0 0 #58a6ff;
+}
+
+.tv-log-row-selected:hover {
+  background: rgba(88, 166, 255, 0.18) !important;
+}
+
+.tv-log-stripe {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+}
+
+.tv-log-body {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tv-log-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #888;
+  line-height: 1.25;
+}
+
+.tv-log-time {
+  color: #aaa;
+  font-weight: 600;
+  font-size: 0.72rem;
+}
+
+.tv-log-service {
+  color: #a5d6ff;
+}
+
+.tv-log-repeat {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  padding: 2px 7px;
+  color: #767676;
+  font-weight: 700;
+  font-size: 0.65rem;
+}
+
+.tv-log-offset {
+  color: #777;
+  font-size: 0.68rem;
+}
+
+.tv-span-id {
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: rgba(110, 118, 129, 0.46);
+  border: 1px solid rgba(110, 118, 129, 0.22);
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  margin-left: 0.4rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.tv-log-source {
+  color: #000000;
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  background: rgba(179, 136, 255, 0.38);
+  border: 1px solid rgba(179, 136, 255, 0.2);
+  border-radius: 3px;
+  padding: 1px 6px;
+  white-space: nowrap;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv-log-expand-hint {
+  color: #666;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  user-select: none;
+}
+
+.tv-log-row:hover .tv-log-expand-hint {
+  color: #ccc;
+}
+
+.tv-log-copy {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #666;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s, background 0.15s;
+  user-select: none;
+}
+
+.tv-log-row:hover .tv-log-copy,
+.tv-log-row-selected .tv-log-copy,
+.tv-log-copy:focus,
+.tv-log-copy-done {
+  opacity: 1;
+}
+
+.tv-log-copy:hover {
+  border-color: #000000;
+  color: #000000;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.tv-log-copy-done {
+  color: #000000;
+  border-color: #2ea043;
+  background: rgba(46, 160, 67, 0.42);
+}
+
+.tv-log-message {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: #e6edf3;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  /* break long URLs/tokens only when they'd overflow */
+  line-height: 1.55;
+  padding-right: 0.5rem;
+}
+
+/* Lengthy logs are clamped to 2 lines until the user expands them. The
+   ellipsis is shown by line-clamp itself; clicking the row reveals the rest
+   without the user having to scroll past every long line. */
+.tv-log-message-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── HTTP method/status pills (inline in span row name) ──────────────────── */
+
+.tv-http-method,
+.tv-http-status {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 6px 0 0;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+
+.tv-http-status {
+  margin: 0 0 0 6px;
+}
+
+.tv-http-method-get {
+  background: rgba(56, 139, 253, 0.18);
+  color: #000000;
+}
+
+.tv-http-method-post {
+  background: rgba(63, 185, 80, 0.18);
+  color: #000000;
+}
+
+.tv-http-method-put {
+  background: rgba(210, 153, 34, 0.18);
+  color: #000000;
+}
+
+.tv-http-method-delete {
+  background: rgba(248, 81, 73, 0.18);
+  color: #000000;
+}
+
+.tv-http-method-other {
+  background: rgba(139, 148, 158, 0.18);
+  color: #000000;
+}
+
+/* Direction indicator (inbound vs outbound HTTP). Colored differently from
+   method pills so it reads as a separate axis of information. */
+.tv-http-dir {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 6px 0 0;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.tv-http-dir-in {
+  /* Server-side / inbound — teal-cyan, matches "received" */
+  background: rgba(57, 197, 187, 0.18);
+  color: #000000;
+  border: 1px solid rgba(57, 197, 187, 0.35);
+}
+
+.tv-http-dir-out {
+  /* Client-side / outbound — amber, matches "sent away" */
+  background: rgba(210, 153, 34, 0.18);
+  color: #000000;
+  border: 1px solid rgba(210, 153, 34, 0.35);
+}
+
+.tv-http-dir-unknown {
+  background: rgba(139, 148, 158, 0.18);
+  color: #000000;
+  border: 1px solid rgba(139, 148, 158, 0.35);
+}
+
+.tv-http-status-success {
+  background: #2ea043;
+  color: #000000;
+}
+
+.tv-http-status-info {
+  background: #388bfd;
+  color: #000000;
+}
+
+.tv-http-status-warn {
+  background: #d29922;
+  color: #000000;
+}
+
+.tv-http-status-error {
+  background: #f85149;
+  color: #000000;
+}
+
+.tv-http-status-unknown {
+  background: #444;
+  color: #adbac7;
+}
+
+.tv-log-payload {
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: #c9d1d9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.tv-log-payload::-webkit-scrollbar {
+  width: 5px;
+}
+
+.tv-log-payload::-webkit-scrollbar-thumb {
+  background: #484f58;
+  border-radius: 6px;
+}
+
+/* ── Two-pane master-detail (Phase 1) ─────────────────────────────────────── */
+
+/* Body layout. Default: tree gets full width and the inspector pane is NOT
+   rendered (no selection). When a span is selected, .tv-body--with-pane is
+   added and the layout becomes two columns.
+   The existing tree column-collapse breakpoint (1024px) is independent and
+   continues to govern when the tree drops Type/Service/Status columns. */
+.tv-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: start;
+  margin-top: 12px;
+}
+
+.tv-body--with-pane {
+  grid-template-columns: 1fr 400px;
+}
+
+@media (max-width: 1280px) {
+  .tv-body--with-pane {
+    grid-template-columns: 1fr;
+  }
+
+  .tv-inspector-pane {
+    position: static !important;
+    max-height: 60vh;
+  }
+}
+
+/* The pane container itself — sticky on desktop, scrolls internally when
+   content overflows. Distinct from .tv-detail-panel (the legacy inline
+   panel, now used only by log rows for clamped-message expansion). */
+.tv-inspector-pane {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  background: #141417;
+  border: 1px solid #2c2c30;
+  border-radius: 10px;
+  padding: 1rem 1.1rem 1.25rem;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+}
+
+.tv-inspector-pane::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tv-inspector-pane::-webkit-scrollbar-thumb {
+  background: #484f58;
+  border-radius: 6px;
+}
+
+/* Empty state — when nothing is selected. Pane is rendered for layout
+   stability so the tree's width doesn't shift on first selection. */
+.tv-inspector-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  min-height: 200px;
+  color: #5a5a60;
+}
+
+.tv-inspector-empty-icon {
+  font-size: 2rem;
+  opacity: 0.45;
+}
+
+.tv-inspector-empty-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #888;
+}
+
+.tv-inspector-empty-sub {
+  font-size: 0.72rem;
+  color: #555;
+  max-width: 240px;
+  line-height: 1.5;
+}
+
+/* Header */
+.tv-inspector-header {
+  border-bottom: 1px solid #2c2c30;
+  padding-bottom: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.tv-inspector-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tv-inspector-type-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+.tv-inspector-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: #f0f0f5;
+  margin: 0;
+  line-height: 1.4;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Close button — top-right of the pane header. */
+.tv-inspector-close {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: 1px solid #2c2c30;
+  border-radius: 4px;
+  color: #888;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  transition: all 0.15s;
+}
+
+.tv-inspector-close:hover {
+  border-color: #000000;
+  color: #000000;
+  background: rgba(248, 81, 73, 0.38);
+}
+
+.tv-inspector-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tv-inspector-type-badge {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  font-family: var(--font-mono);
+}
+
+.tv-inspector-meta-pill {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #2c2c30;
+  border-radius: 4px;
+  padding: 1px 7px;
+  color: #767676;
+  white-space: nowrap;
+}
+
+/* Copy-as-cURL button — sits in the inspector meta row alongside the
+   duration/timestamp pills. Visible only when the node has enough info
+   to build a curl (httpMethod + url). */
+.tv-inspector-curl-btn {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(56, 139, 253, 0.12);
+  border: 1px solid rgba(56, 139, 253, 0.4);
+  color: #000000;
+  border-radius: 4px;
+  padding: 1px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.tv-inspector-curl-btn:hover {
+  background: rgba(56, 139, 253, 0.22);
+  color: #000000;
+}
+
+.tv-inspector-curl-btn-done {
+  background: rgba(46, 160, 67, 0.18);
+  border-color: rgba(46, 160, 67, 0.55);
+  color: #000000;
+}
+
+/* Sections */
+.tv-inspector-section {
+  margin-top: 0.9rem;
+}
+
+.tv-inspector-section-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.tv-inspector-code {
+  margin: 0;
+  padding: 10px 12px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: #c9d1d9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+/* Exception block in the inspector pane: type/message header + a collapsible
+   full-width stack trace. */
+.tv-inspector-exc-head {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
+
+.tv-inspector-exc-type {
+  color: #f85149;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.tv-inspector-exc-msg {
+  color: #888;
+}
+
+.tv-inspector-stack-toggle {
+  background: none;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #888;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding: 3px 9px;
+}
+
+.tv-inspector-stack-toggle:hover {
+  background: #161b22;
+  color: #c9d1d9;
+}
+
+/* The stack trace uses `pre` (not pre-wrap) so frames keep their indentation;
+   the block scrolls in both directions for long lines / many frames. */
+.tv-inspector-stack {
+  margin-top: 8px;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  max-height: 420px;
+}
+
+.tv-inspector-code::-webkit-scrollbar {
+  width: 5px;
+}
+
+.tv-inspector-code::-webkit-scrollbar-thumb {
+  background: #484f58;
+  border-radius: 6px;
+}
+
+/* Attributes — definition list with two-column layout */
+.tv-inspector-attrs {
+  display: grid;
+  grid-template-columns: minmax(80px, max-content) 1fr;
+  column-gap: 14px;
+  row-gap: 4px;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.tv-inspector-attrs dt {
+  color: #777;
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.tv-inspector-attrs dd {
+  color: #d8d8d8;
+  font-family: var(--font-mono);
+  margin: 0;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+/* Children summary — compact list grouped by type */
+.tv-inspector-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tv-inspector-children li {
+  display: grid;
+  grid-template-columns: 8px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  padding: 3px 0;
+}
+
+.tv-inspector-child-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.tv-inspector-child-type {
+  color: #ccc;
+  font-weight: 600;
+}
+
+.tv-inspector-child-count {
+  color: #888;
+}
+
+.tv-inspector-child-time {
+  color: #aaa;
+  text-align: right;
+  min-width: 64px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Top nav (Logs / Summary) + Summary screen
+   ───────────────────────────────────────────────────────────────────────── */
+
+.top-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--surface-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.5rem 1.5rem 0;
+  /* Never squeezed when the strip sits in a full-height flex column. */
+  flex-shrink: 0;
+}
+
+/* Inner tablist — only present when TabBar renders a `trailing` slot. */
+.top-tab-list {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* App-level controls pinned to the right end of the strip. align-self keeps the
+   tab underlines flush with the bar's bottom border while the cluster lifts off
+   it slightly. */
+.top-tab-trailing {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  align-self: flex-end;
+  padding-bottom: 0.3rem;
+}
+
+/* Compact the account chip a touch so hosting it here doesn't make the strip
+   taller than on every other tab (which would look like the tabs jump). */
+.top-tab-trailing .user-chip {
+  padding: 0.2rem 0.5rem 0.2rem 0.3rem;
+}
+
+.top-tab-trailing .user-avatar {
+  width: 22px;
+  height: 22px;
+  font-size: 0.65rem;
+}
+
+.top-tab-trailing .role-badge {
+  font-size: 0.62rem;
+  padding: 0.15rem 0.45rem;
+}
+
+.top-tab-btn {
+  position: relative;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.top-tab-btn:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg);
+}
+
+.top-tab-btn--active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent-color);
+}
+
+/* Summary screen layout */
+.summary-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  width: 100%;
+}
+
+.summary-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.summary-toolbar-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.summary-window-group {
+  display: inline-flex;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.summary-window-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: var(--surface-color);
+  border-right: 1px solid var(--border-color);
+}
+
+.summary-window-btn:last-child {
+  border-right: none;
+}
+
+.summary-window-btn:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg);
+}
+
+.summary-window-btn--active {
+  color: var(--accent-color);
+  background: rgba(187, 134, 252, 0.12);
+}
+
+.summary-refresh-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-left: auto;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 1100px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  min-height: 200px;
+}
+
+.summary-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+.summary-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.summary-card-subtitle {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.summary-card-loading,
+.summary-card-error,
+.summary-card-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 1.5rem 0;
+}
+
+.summary-card-error {
+  color: var(--error-color);
+}
+
+/* Shimmer bar shown at the top of a summary card while it's fetching. Reuses
+   the same keyframes as the logs view's loading bar so the visual language
+   is consistent across the app. */
+.summary-card-loading-bar {
+  height: 3px;
+  width: 100%;
+  margin-top: 0.25rem;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      var(--accent-color) 40%,
+      var(--accent-color) 60%,
+      transparent 100%);
+  background-size: 200% 100%;
+  animation: log-shimmer 1.4s ease-in-out infinite;
+}
+
+/* Per-card inline toolbar (e.g. the Metrics card's service picker). Sits
+   below the header and above the body content. */
+.summary-card-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0 0.75rem 0;
+}
+
+.summary-card-toolbar-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.summary-card-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #30363d);
+  background: var(--bg-secondary, #161b22);
+  color: var(--text-primary, #c9d1d9);
+}
+
+/* Severity rows in the Logs summary card */
+.sev-row {
+  display: grid;
+  grid-template-columns: 64px 56px 1fr 60px;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.sev-row-label {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* One label colour per level, straight off the --sev-* scale, so this breakdown,
+   the histogram legend, the per-row left edge and the Analytics columns all
+   answer "what colour is ERROR" identically.
+
+   FATAL is its own colour rather than a second ERROR. It was aliased to the error
+   red, which made the two levels indistinguishable in a list that prints them one
+   directly above the other, which is the one place the distinction is being drawn.
+
+   DEBUG and TRACE were both --text-secondary, i.e. both the same grey as a level
+   with no colour at all. They get their own values now: the rows still read as
+   low-priority because violet and blue-grey sit at the bottom of the scale, but
+   "debug" and "trace" stop looking like the same row twice. */
+.sev-row-label.FATAL {
+  color: var(--sev-fatal);
+}
+
+.sev-row-label.ERROR {
+  color: var(--sev-error);
+}
+
+.sev-row-label.WARN {
+  color: var(--sev-warn);
+}
+
+.sev-row-label.INFO {
+  color: var(--sev-info);
+}
+
+.sev-row-label.DEBUG {
+  color: var(--sev-debug);
+}
+
+.sev-row-label.TRACE {
+  color: var(--sev-trace);
+}
+
+.sev-row-label.UNKNOWN {
+  color: var(--sev-other);
+}
+
+.sev-row-count {
+  color: var(--text-primary);
+}
+
+.sev-bar {
+  position: relative;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.sev-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent-color);
+  border-radius: 3px;
+}
+
+/* Every level named, because the .sev-bar-fill default is --accent-color: DEBUG and
+   TRACE had no rule of their own and so drew their bars in the brand teal, the same
+   fill INFO wants, on the two levels furthest from it. */
+.sev-bar-fill.FATAL {
+  background: var(--sev-fatal);
+}
+
+.sev-bar-fill.ERROR {
+  background: var(--sev-error);
+}
+
+.sev-bar-fill.WARN {
+  background: var(--sev-warn);
+}
+
+.sev-bar-fill.INFO {
+  background: var(--sev-info);
+}
+
+.sev-bar-fill.DEBUG {
+  background: var(--sev-debug);
+}
+
+.sev-bar-fill.TRACE {
+  background: var(--sev-trace);
+}
+
+.sev-bar-fill.UNKNOWN {
+  background: var(--sev-other);
+}
+
+.sev-row-pct {
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.summary-subtitle {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 0.5rem;
+}
+
+.summary-top-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.summary-top-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.summary-top-row-name {
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.summary-top-row-value {
+  color: var(--text-secondary);
+  padding-left: 0.5rem;
+}
+
+/* Big-number column used by Traces / Metrics cards */
+.summary-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem 1rem;
+}
+
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.summary-stat-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.summary-stat-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.summary-stat-value.error {
+  color: var(--error-color);
+}
+
+.summary-stat-value.ok {
+  color: var(--success-color);
+}
+
+/* Metrics sparklines */
+.summary-spark-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 80px;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
+}
+
+.summary-spark-row:last-child {
+  border-bottom: none;
+}
+
+.summary-spark-label {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary-spark-value {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+
+.summary-spark-svg {
+  width: 100%;
+  height: 30px;
+  display: block;
+}
+
+/* Service uptime card */
+.svc-uptime-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.svc-uptime-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  text-align: left;
+  width: 100%;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.svc-uptime-row:hover {
+  background: var(--hover-bg);
+  border-radius: 4px;
+}
+
+.svc-uptime-row:last-child {
+  border-bottom: none;
+}
+
+.svc-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+}
+
+.svc-dot.UP {
+  background: var(--success-color);
+  box-shadow: 0 0 6px rgba(102, 187, 106, 0.4);
+}
+
+.svc-dot.DOWN {
+  background: var(--error-color);
+}
+
+.svc-uptime-name {
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.svc-uptime-detail {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.svc-uptime-status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.svc-uptime-status.UP {
+  color: var(--success-color);
+}
+
+.svc-uptime-status.DOWN {
+  color: var(--error-color);
+}
+
+.svc-uptime-status.UNKNOWN {
+  color: var(--text-secondary);
+}
+
+/* Dual-signal row: two dots stacked horizontally, two status pills */
+.svc-uptime-row--dual {
+  grid-template-columns: 32px 1fr auto;
+}
+
+.svc-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.svc-dot--none {
+  background: rgba(255, 255, 255, 0.12);
+  outline: 1px dashed rgba(255, 255, 255, 0.18);
+}
+
+.svc-uptime-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.svc-uptime-statuses {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+/* ─── Service vitals drawer ───────────────────────────────────────────────
+ * Slide-in right-side panel opened from the Services Uptime card. Six
+ * vital-sign tiles in a 3×2 grid, plus a downstream calls list and a
+ * "missing signals" footer for diagnostics.
+ */
+.svc-vitals-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.svc-vitals-drawer {
+  width: min(520px, 100%);
+  height: 100%;
+  background: var(--surface-color, #181b1f);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: -16px 0 32px rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.svc-vitals-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.svc-vitals-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.svc-vitals-subtitle {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.svc-vitals-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.svc-vitals-link {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--accent-color);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.svc-vitals-link:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.svc-vitals-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.svc-vitals-close:hover {
+  color: var(--text-primary);
+}
+
+.svc-vitals-loading,
+.svc-vitals-error,
+.svc-vitals-empty {
+  padding: 20px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.svc-vitals-error {
+  color: var(--error-color);
+}
+
+.svc-vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 540px) {
+  .svc-vitals-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.svc-vitals-tile {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 76px;
+}
+
+.svc-vitals-tile-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.svc-vitals-tile-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.svc-vitals-tile-value {
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.svc-vitals-tile-unit {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.svc-vitals-spark {
+  width: 100%;
+  height: 24px;
+  display: block;
+}
+
+.svc-vitals-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 12px;
+}
+
+.svc-vitals-section-title {
+  margin: 0 0 8px 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.svc-vitals-section-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.svc-vitals-downstream {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.svc-vitals-downstream-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+}
+
+.svc-vitals-downstream-row:last-child {
+  border-bottom: none;
+}
+
+.svc-vitals-downstream-name {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  word-break: break-all;
+}
+
+.svc-vitals-downstream-metrics {
+  display: flex;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.svc-vitals-notes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.svc-vitals-note {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+/* Traces Tab Styling */
+.trace-row-clickable:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.trace-id-cell {
+  color: #58a6ff;
+}
+
+.trace-id-cell:hover {
+  text-decoration: underline;
+}
+
+.status-badge {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge--ok {
+  background: rgba(46, 160, 67, 0.15);
+  color: #000000;
+}
+
+.status-badge--error {
+  background: rgba(248, 81, 73, 0.15);
+  color: #000000;
+}
+
+.duration-chip {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.duration-chip--fast {
+  background: rgba(46, 160, 67, 0.1);
+  color: #000000;
+}
+
+.duration-chip--medium {
+  background: rgba(210, 153, 34, 0.1);
+  color: #000000;
+}
+
+.duration-chip--slow {
+  background: rgba(248, 81, 73, 0.1);
+  color: #000000;
+}
+
+
+/* Traces Tab custom cell and row modifications */
+.traces-view .log-list {
+  font-family: var(--font-sans);
+}
+
+.traces-view .action-btn {
+  background: var(--button-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.traces-view .action-btn:hover {
+  background: var(--hover-bg);
+  border-color: var(--accent-color);
+}
+
+
+/* ==========================================================================
+   App shell — top bar, left icon rail, scrolling content column
+   ==========================================================================
+   The primary nav moved from a horizontal tab strip to a left rail so every
+   screen owns the full viewport width for its own toolbar. Colours are the
+   existing token set only: --company-bg for chrome, --surface-color for panels,
+   --accent-color (teal) for selection.
+   ========================================================================== */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+.app-shell-body {
+  display: flex;
+  flex: 1;
+  /* min-height:0 is what lets the content column scroll instead of the page —
+     without it a flex child refuses to shrink below its content height. */
+  min-height: 0;
+}
+
+.app-shell-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg-color);
+}
+
+/* ── Left icon rail ─────────────────────────────────────────────────────── */
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 76px;
+  flex-shrink: 0;
+  padding: 0.5rem 0;
+  background: var(--company-bg);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+}
+
+.side-nav-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.65rem 0.25rem;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-align: center;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+  min-height: 58px;
+  justify-content: center;
+}
+
+.side-nav-item:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg);
+}
+
+.side-nav-item--active {
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  border-left-color: var(--accent-color);
+}
+
+.side-nav-icon {
+  display: block;
+}
+
+/* Every rail item is the same height, so the icons line up on a constant
+   rhythm down the column. This used to drift: "Data sources" was the only
+   two-line label, which made that one item taller than the rest and pushed
+   everything below it out of step. That entry is gone, but pinning the height
+   means the next multi-word label can't reintroduce the problem — it wraps
+   inside a fixed box instead of resizing its neighbour's spacing. */
+
+.side-nav-label {
+  line-height: 1.15;
+  overflow-wrap: break-word; word-break: normal;
+}
+
+/* ── Section column (second-level nav) ─────────────────────────────
+   The list of screens inside a rail group — Logs / Analytics / Traces /
+   Metrics under the Logs entry. Rendered by SectionNav, and only present while a
+   grouped screen is open, so nothing else in the app loses width.
+
+   Reads as one step deeper than the rail rather than as a second rail: a strip of
+   glyphs on --bg-color rather than the rail's --company-bg, so the two columns
+   separate without needing a heavier border. Selection is marked on the LEFT
+   edge, the same grammar the rail uses, because it means the same thing in both
+   places: "you are here".
+
+   ─── Collapsed at rest, labels revealed on hover ────────────────────
+
+   Three boxes, and the split is the whole design:
+
+     .section-nav        the SPACE RESERVED in the shell's flex row. Fixed at the
+                         strip width and never animated.
+     .section-nav-list   the PANEL. Absolutely positioned inside that space; this
+                         is what widens, growing over the content column.
+     .section-nav-label  one chip per item, anchored to the RIGHT of its own
+                         glyph, outside the strip.
+
+   Reserving only the strip is what makes the reveal free: the panel grows over
+   the content instead of pushing it, so the Logs table does not reflow, the
+   histogram does not re-scale and the trace waterfall does not re-lay-out every
+   time the pointer crosses the nav. A width transition on the flex item itself
+   would do all three, sixty times a second, on the heaviest screen in the app.
+
+   ─── What the panel must NOT do: swallow the content's clicks ───────
+
+   An expanded overlay covers content, and the first version of this let that
+   overlay capture pointer events across its full 172px. The result was a real
+   defect rather than a cosmetic one: on Traces with the field sidebar collapsed
+   to its 16px handle, the trace table starts at x≈62px, so the expanded panel sat
+   directly on top of the leftmost trace columns. Moving the pointer in from the
+   left expanded the panel, and the click that should have opened a trace landed on
+   a nav item instead — sometimes navigating away rather than drilling in. The
+   field sidebar's own service filters were unreachable the same way.
+
+   Worse, it was directional: approaching that band from the right left the panel
+   collapsed and the click worked. Whether content was clickable depended on which
+   way the pointer had travelled, which is the kind of bug nobody can describe.
+
+   So hit areas are now decoupled from the painted area:
+
+     - the PANEL is pointer-events: none. Its background paints over the content
+       but never intercepts anything.
+     - each ITEM is pointer-events: auto and stays STRIP-WIDTH. Clicking a
+       section means clicking its glyph, inside the reserved 46px, over nothing.
+     - each LABEL is pointer-events: none until ITS OWN item is hovered, and only
+       then becomes clickable.
+
+   That last rule is what keeps the labels usable as click targets — you can point
+   at a glyph, slide right onto the word and click it — while never blocking more
+   than the one 126×34px rectangle beside the glyph the pointer is already on. The
+   other three labels are paint, not targets. Everything else in that band takes
+   its clicks normally. */
+.section-nav {
+  position: relative;
+  /* Both, deliberately: `flex` for the row's own sizing and `width` so the
+     absolute panel below has a definite box to inherit its collapsed size from. */
+  flex: 0 0 46px;
+  width: 46px;
+}
+
+.section-nav-list {
+  position: absolute;
+  /* Full height of the shell row — .app-shell-body stretches its children, so
+     this pins to the same box the rail occupies. */
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 46px;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0;
+  margin: 0;
+  /* The global `* { margin: 0; padding: 0 }` reset already flattens the list, so
+     this only removes the marker glyph. */
+  list-style: none;
+  background: var(--bg-color);
+  border-right: 1px solid var(--border-color);
+  /* Above in-content dropdowns (the logs toolbar menus and time-range panel sit
+     at 20–46) and below every chrome popup, fullscreen takeover and modal
+     backdrop (60+). The nav paints over the content beside it, but a fullscreen
+     query editor or an open dialog must paint over the nav. */
+  z-index: 50;
+  /* The panel PAINTS over content and must never take its clicks. Items and the
+     hovered label opt back in below. */
+  pointer-events: none;
+  transition: width 140ms ease, box-shadow 140ms ease;
+  /* Deliberately NOT a scroll container. `overflow-y: auto` would compute
+     overflow-x to a clipping value too, which would cut every label off at the
+     strip edge — the labels live outside it by design. Four items at ~34px do
+     not come close to the shell height; a group big enough to overflow would
+     need a different treatment, not a scrollbar 46px wide. */
+}
+
+/* :focus-within as well as :hover, so tabbing into the column reveals the labels
+   for a keyboard user exactly as pointing at it does. Without it the labels would
+   be permanently invisible to anyone not using a mouse — they stay in the
+   accessibility tree either way (see .section-nav-label: opacity, not display),
+   but "announced but never shown" is only half the job. */
+.section-nav:hover .section-nav-list,
+.section-nav:focus-within .section-nav-list {
+  width: 172px;
+  /* Floating over content now, so it needs to read as raised. The resting state
+     has no shadow — flush against the content, like a column. */
+  box-shadow: 6px 0 16px -6px rgba(0, 0, 0, 0.55);
+}
+
+/* Strip-width, always. This is the whole click target for a section, and keeping
+   it inside the reserved 46px is what stops it from covering content. It does NOT
+   grow with the panel. */
+.section-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  flex: 0 0 auto;
+  padding: 0.5rem 0;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.section-nav-item:hover,
+.section-nav-item:focus-visible {
+  color: var(--text-primary);
+  background: var(--hover-bg);
+}
+
+.section-nav-item.is-active {
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  border-left-color: var(--accent-color);
+}
+
+.section-nav-item:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+/* Centred in the strip and never moved. The panel widening does not shift it,
+   because the item it sits in does not widen. */
+.section-nav-icon {
+  flex: 0 0 auto;
+}
+
+/* The label is a chip hanging off the RIGHT of its glyph, outside the strip, so
+   it can be revealed without the item growing over the content.
+
+   Its background is the opaque equivalent of whatever tint the item is showing,
+   so the highlight reads as one continuous 172px block rather than stopping at
+   the strip edge. --hover-bg is accent at 8% and the active tint is accent at 12%,
+   both over --bg-color, so the color-mix values below composite identically.
+
+   opacity (not display/visibility) keeps every label in the accessibility tree,
+   so a screen reader announces the full name at any width. */
+.section-nav-label {
+  position: absolute;
+  left: 100%;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  /* 172 panel − 46 strip − 3 active border. */
+  width: 123px;
+  padding-right: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--bg-color);
+  opacity: 0;
+  /* Paint only, until this item is the one being pointed at (below). Without
+     this, all four labels would blanket a 126px strip of content in click-
+     swallowing overlay the moment the panel opened. */
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.section-nav-item:hover .section-nav-label {
+  background: color-mix(in srgb, var(--accent-color) 8%, var(--bg-color));
+  /* The one label that IS a target: reachable by sliding right off the glyph. */
+  pointer-events: auto;
+}
+
+.section-nav-item.is-active .section-nav-label {
+  background: color-mix(in srgb, var(--accent-color) 12%, var(--bg-color));
+}
+
+.section-nav-item.is-active:hover .section-nav-label {
+  pointer-events: auto;
+}
+
+.section-nav:hover .section-nav-label,
+.section-nav:focus-within .section-nav-label {
+  opacity: 1;
+}
+
+/* No hover to reveal with — touch and pen. The panel is permanently open and
+   reserves its own width, because a control that only exists on hover does not
+   exist at all here, and tap-to-expand would spend the first tap of every
+   navigation on opening the thing.
+
+   Everything becomes a real target again: nothing is overlaying content, so the
+   items span the full width and the labels stop being paint-only. */
+@media (hover: none) {
+  .section-nav {
+    flex-basis: 172px;
+    width: 172px;
+  }
+
+  .section-nav-list,
+  .section-nav:hover .section-nav-list {
+    width: 172px;
+    box-shadow: none;
+    pointer-events: auto;
+  }
+
+  .section-nav-item {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem 0.7rem;
+  }
+
+  .section-nav-label {
+    position: static;
+    width: auto;
+    min-width: 0;
+    padding-right: 0;
+    background: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* The reveal is the point, so it still happens — it just happens at once. */
+@media (prefers-reduced-motion: reduce) {
+  .section-nav-list,
+  .section-nav-label,
+  .section-nav-item {
+    transition: none;
+  }
+}
+
+/* The shell already pins the top bar above a non-scrolling column, so the bar's
+   own sticky positioning is redundant here. */
+.app-shell > .app-topbar {
+  position: static;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Home screen — overview panel + stat tiles
+   ========================================================================== */
+
+.page-heading {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-right: 0.5rem;
+}
+
+.ov-panel {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.ov-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-bottom: 0.9rem;
+}
+
+.ov-panel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 35%, transparent);
+}
+
+.ov-panel-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ov-panel-window {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.ov-tiles {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 1280px) {
+  .ov-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .ov-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ov-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 0.95rem;
+  background: var(--company-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  text-align: left;
+  font-family: var(--font-sans);
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.ov-tile--clickable:hover {
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+  transform: translateY(-1px);
+}
+
+.ov-tile-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ov-tile-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ov-tile-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent);
+}
+
+/* Tone only ever recolours the icon chip and the value — never the tile body.
+   A whole tile flooded with red reads as "this panel is broken" rather than
+   "this number is high". */
+.ov-tile--error .ov-tile-chip {
+  color: var(--error-color);
+  background: color-mix(in srgb, var(--error-color) 14%, transparent);
+  border-color: color-mix(in srgb, var(--error-color) 35%, transparent);
+}
+
+.ov-tile--error .ov-tile-value {
+  color: var(--error-color);
+}
+
+.ov-tile--warn .ov-tile-chip {
+  color: var(--warn-color);
+  background: color-mix(in srgb, var(--warn-color) 14%, transparent);
+  border-color: color-mix(in srgb, var(--warn-color) 35%, transparent);
+}
+
+.ov-tile--ok .ov-tile-chip {
+  color: var(--success-color);
+  background: color-mix(in srgb, var(--success-color) 14%, transparent);
+  border-color: color-mix(in srgb, var(--success-color) 35%, transparent);
+}
+
+.ov-tile-value {
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ov-tile-detail {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  min-height: 1em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   Logs screen — split layout: field sidebar + results column
+   ========================================================================== */
+
+.logs-container--split {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+/* The toolbar is chrome, not content: tighten it up and drop the bottom margin
+   the stacked layout used to need. */
+.logs-container--split .filters-panel {
+  margin-bottom: 0;
+  padding: 0.6rem 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.logs-container--split .controls-left,
+.logs-container--split .controls-right {
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Query box leading the toolbar — icon inside, grows to fill the slack. */
+.search-wrapper--lead {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 300px;
+  min-width: 220px;
+  max-width: 560px;
+}
+
+.search-wrapper--lead .filter-input {
+  width: 100%;
+  padding-left: 2rem;
+}
+
+.search-wrapper-icon {
+  position: absolute;
+  left: 0.65rem;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.logs-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.logs-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  /* Tight on purpose: everything in this column above the log list is chrome,
+     and each rem of padding here is a log line the user can't see. */
+  padding: 0.4rem 0.6rem 0.5rem;
+  gap: 0.35rem;
+}
+
+/* The table fills whatever the results bar and chart leave behind, rather than
+   the fixed 80%-of-parent it used in the stacked layout. */
+.logs-main .log-list {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 200px;
+  border-radius: 0 0 6px 6px;
+}
+
+.logs-main .log-header {
+  border: 1px solid var(--border-color);
+  border-bottom-width: 2px;
+  border-radius: 6px 6px 0 0;
+  background: var(--surface-color);
+  padding: 0.6rem 1.5rem;
+  flex-shrink: 0;
+}
+
+.logs-main .pagination-footer {
+  flex-shrink: 0;
+}
+
+/* Severity read from the row's left edge. inset box-shadow rather than a real
+   border so no column position shifts between severities. */
+.log-line.sev-FATAL,
+.log-line.sev-CRITICAL,
+.log-lv.sev-FATAL,
+.log-lv.sev-CRITICAL {
+  box-shadow: inset 3px 0 0 var(--sev-fatal);
+}
+
+.log-line.sev-ERROR,
+.log-lv.sev-ERROR {
+  box-shadow: inset 3px 0 0 var(--sev-error);
+}
+
+.log-line.sev-WARN,
+.log-line.sev-WARNING,
+.log-lv.sev-WARN,
+.log-lv.sev-WARNING {
+  box-shadow: inset 3px 0 0 var(--sev-warn);
+}
+
+.log-line.sev-INFO,
+.log-lv.sev-INFO {
+  box-shadow: inset 3px 0 0 var(--sev-info);
+}
+
+.log-line.sev-DEBUG,
+.log-lv.sev-DEBUG {
+  box-shadow: inset 3px 0 0 var(--sev-debug);
+}
+
+.log-line.sev-TRACE,
+.log-lv.sev-TRACE {
+  box-shadow: inset 3px 0 0 var(--sev-trace);
+}
+
+/* ── Field sidebar ──────────────────────────────────────────────────────── */
+.fieldbar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* 288px: wide enough for the longest real service name plus its count
+     without wrapping, narrow enough that the table keeps the width it needs
+     for a full log line. */
+  width: 288px;
+  flex-shrink: 0;
+  min-height: 0;
+  background: var(--surface-color);
+  border-right: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
+}
+
+.fieldbar-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.4rem 0.6rem 0.35rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.fieldbar-scope-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.service-multiselect--block {
+  width: 100%;
+}
+
+.service-multiselect--block .service-multiselect-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fieldbar-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.35rem 0.6rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+}
+
+.fieldbar-search:focus-within {
+  border-color: var(--accent-color);
+}
+
+.fieldbar-search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+}
+
+.fieldbar-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 0.35rem 0.75rem;
+}
+
+.fieldbar-empty {
+  padding: 1.25rem 0.85rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.fieldbar-field {
+  border-radius: 5px;
+}
+
+.fieldbar-field.is-open {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.fieldbar-field-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.2rem 0.45rem;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  text-align: left;
+  border-radius: 5px;
+}
+
+.fieldbar-field-head:hover {
+  background: var(--hover-bg);
+}
+
+.fieldbar-field.is-open .fieldbar-field-head {
+  color: var(--accent-color);
+}
+
+.fieldbar-caret {
+  width: 0.7rem;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+}
+
+.fieldbar-field-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldbar-field-count {
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  background: var(--company-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+}
+
+.fieldbar-values {
+  display: flex;
+  flex-direction: column;
+  padding: 0.1rem 0.5rem 0.5rem 1.55rem;
+}
+
+.fieldbar-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.12rem 0.4rem;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  text-align: left;
+}
+
+.fieldbar-value:hover {
+  color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.fieldbar-value-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldbar-value-n {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.fieldbar-values-more {
+  padding: 0.25rem 0.4rem;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Collapse handle — pinned to the sidebar's right edge, and becomes the whole
+   rail when the column is collapsed. */
+.fieldbar-handle {
+  position: absolute;
+  top: 50%;
+  right: -1px;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--company-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px 0 0 4px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1;
+  z-index: 2;
+}
+
+.fieldbar-handle:hover {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.fieldbar-handle--collapsed {
+  position: relative;
+  top: auto;
+  right: auto;
+  transform: none;
+  align-self: stretch;
+  height: auto;
+  width: 16px;
+  flex-shrink: 0;
+  border-radius: 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: none;
+  border-left: none;
+  border-right: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+/* ── Results bar ────────────────────────────────────────────────────────── */
+.results-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.results-bar-count strong {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.results-bar-took {
+  color: var(--text-secondary);
+}
+
+.results-bar-when {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+}
+
+.results-bar-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success-color);
+}
+
+.results-bar-when.is-loading .results-bar-dot {
+  background: var(--warn-color);
+}
+
+.results-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.results-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.results-bar-btn:hover:not(:disabled) {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.results-bar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.results-bar-btn.is-active {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.results-bar-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.25rem;
+}
+
+.results-bar-page {
+  min-width: 1.5rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* Numbered page buttons. Same footprint as .results-bar-btn so the row of
+   numbers and the «/» arrows sit on one baseline. */
+.results-bar-page-btn {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.results-bar-page-btn:hover {
+  color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.results-bar-page-btn.is-current {
+  color: #fff;
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  font-weight: 600;
+}
+
+/* Rows-per-page. Lives here rather than in a footer, which is where
+   OpenObserve puts it and where the eye already is after reading the count. */
+.results-bar-size select {
+  height: 26px;
+  padding: 0 0.35rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.results-bar-size select:hover {
+  border-color: var(--accent-color);
+}
+
+/* Visually hidden but still announced by screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Histogram ──────────────────────────────────────────────────────────── */
+.histo {
+  position: relative;
+  flex-shrink: 0;
+  padding: 0.3rem 0.6rem 0.25rem 3.1rem;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.histo--empty {
+  padding: 0.6rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* Non-uniform scaling: the bars stretch to whatever width is available, which
+   is exactly what a fixed 60-bucket chart wants. */
+.histo-svg {
+  display: block;
+  width: 100%;
+  height: var(--histo-h);
+}
+
+.histo-grid {
+  stroke: var(--border-color);
+  stroke-width: 1;
+}
+
+.histo-yaxis {
+  position: absolute;
+  left: 0.4rem;
+  /* Matches .histo's padding-top so the first label sits on the top gridline. */
+  top: 0.3rem;
+  height: var(--histo-h);
+  width: 2.4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Half the label's own height, so each sits centred on its gridline instead of
+   hanging below it. */
+.histo-yaxis span {
+  transform: translateY(-0.4em);
+}
+
+.histo-xaxis {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 0.15rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+}
+
+.histo-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.4rem;
+  padding-top: 0.25rem;
+  margin-top: 0.2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.histo-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.02rem 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.histo-legend-item:hover {
+  border-color: var(--border-color);
+  background: var(--hover-bg);
+}
+
+.histo-legend-item.is-active {
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+  color: var(--accent-color);
+}
+
+.histo-legend-item.is-muted {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.histo-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.histo-legend-n {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.histo-caption {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 1000px) {
+  /* Below this the sidebar plus a readable table no longer fit side by side. */
+  .logs-body {
+    flex-direction: column;
+  }
+
+  .fieldbar {
+    width: 100%;
+    max-height: 240px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .fieldbar-handle {
+    display: none;
+  }
+}
+
+/* The trace drill-down screens were written to fill the viewport (min-height:
+   100vh) back when the whole page scrolled. Inside the shell they only own the
+   content column, so 100vh overshoots it by the top bar height and leaves a
+   dead strip below the fold. Fill the column instead. */
+.app-shell-content .trace-view,
+.app-shell-content .tv-container {
+  min-height: 100%;
+}
+
+/* ==========================================================================
+   Home screen — org ingest posture: Streams panel + Functions / Alerts /
+   Pipelines / Dashboards. Reuses .ov-panel / .ov-tile from the overview panel
+   so the two screens share one card language.
+   ========================================================================== */
+
+.home-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  width: 100%;
+}
+
+.home-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.home-org-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 35%, transparent);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+}
+
+.home-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 35%, transparent);
+}
+
+.home-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.home-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.home-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.home-updated {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+/* ── Panel header extras ───────────────────────────────────────────────── */
+.home-panel-open {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.home-panel-open:hover {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+/* Sits between the title and the arrow, so it must not push the arrow off its
+   margin-left:auto anchor — it doesn't, being a fixed-size inline-block. */
+.home-panel-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-color);
+  animation: home-spin 700ms linear infinite;
+}
+
+@keyframes home-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Per-panel icon tones — same treatment as the overview tiles' chips. */
+.ov-panel-icon--warn {
+  color: var(--warn-color);
+  background: color-mix(in srgb, var(--warn-color) 14%, transparent);
+  border-color: color-mix(in srgb, var(--warn-color) 35%, transparent);
+}
+
+.ov-panel-icon--error {
+  color: var(--error-color);
+  background: color-mix(in srgb, var(--error-color) 14%, transparent);
+  border-color: color-mix(in srgb, var(--error-color) 35%, transparent);
+}
+
+/* ── Grid below the Streams panel ──────────────────────────────────────── */
+.home-grid {
+  display: grid;
+  /* Narrow first column of stacked count cards, then two wider list cards —
+     the reference proportions. */
+  grid-template-columns: minmax(230px, 0.85fr) minmax(0, 1.6fr) minmax(0, 1.6fr);
+  gap: 1rem;
+  /* Stretch, so the three cards share one bottom edge as in the reference. */
+  align-items: stretch;
+}
+
+@media (max-width: 1180px) {
+  .home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.home-grid-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.home-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.home-panel-head {
+  padding-bottom: 0.75rem;
+}
+
+.home-card-body {
+  display: flex;
+  flex: 1;
+  min-height: 120px;
+  padding-top: 0.5rem;
+}
+
+.home-card-bignum {
+  align-self: flex-end;
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "No data available" — centred in the body, matching the reference. */
+.home-card-nodata {
+  margin: auto;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.home-card-list {
+  width: 100%;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.home-card-list-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+}
+
+.home-card-list-row:last-child {
+  border-bottom: none;
+}
+
+.home-card-list-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.home-card-list-meta {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+/* ── Resources card: counts, then Explore shortcuts ─────────────────────── */
+.home-res-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+.home-res-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.home-res-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.45rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.home-res-row--link {
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.home-res-row--link:hover {
+  background: var(--hover-bg);
+  border-color: color-mix(in srgb, var(--accent-color) 30%, transparent);
+}
+
+.home-res-row--link:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+.home-res-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+}
+
+.home-res-icon--ok {
+  color: var(--success-color);
+  background: color-mix(in srgb, var(--success-color) 14%, transparent);
+}
+
+.home-res-icon--warn {
+  color: var(--warn-color);
+  background: color-mix(in srgb, var(--warn-color) 14%, transparent);
+}
+
+.home-res-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-res-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-res-chevron,
+.home-res-chevron-spacer {
+  flex-shrink: 0;
+  width: 14px;
+  color: var(--text-secondary);
+  transition: color 120ms ease, transform 120ms ease;
+}
+
+.home-res-row--link:hover .home-res-chevron {
+  color: var(--accent-color);
+  transform: translateX(2px);
+}
+
+.home-res-divider {
+  height: 1px;
+  margin: 0.6rem 0.4rem;
+  background: var(--border-color);
+}
+
+.home-res-section {
+  padding: 0 0.4rem 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+/* ── Healthy / Failed / Warning bars on Alerts + Pipelines ────────────────── */
+.home-health {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  padding-top: 0.75rem;
+}
+
+.home-health-plot {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  height: 180px;
+  padding: 0 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  /* Faint gridlines at quarters — enough to read magnitude, not enough to compete. */
+  background-image: linear-gradient(to top, var(--border-color) 1px, transparent 1px);
+  background-size: 100% 25%;
+}
+
+.home-health-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  height: 100%;
+}
+
+.home-health-value {
+  padding-bottom: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.home-health-bar {
+  width: min(72px, 70%);
+  border-radius: 4px 4px 0 0;
+  transition: height 300ms ease;
+}
+
+.home-health-bar--ok    { background: var(--success-color); }
+.home-health-bar--error { background: var(--error-color); }
+.home-health-bar--warn  { background: var(--warn-color); }
+
+.home-health-axis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  padding: 0.4rem 0.5rem 0;
+}
+
+.home-health-label {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+}
+
+.home-health-caption {
+  padding-top: 0.35rem;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+/* Scheduled / Real time pair on the Alerts + Pipelines cards. */
+.home-split {
+  display: flex;
+  align-items: stretch;
+  gap: 1.25rem;
+}
+
+.home-split-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-right: 1.25rem;
+  border-right: 1px solid var(--border-color);
+}
+
+.home-split-stat:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+.home-split-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.home-split-value {
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* ==========================================================================
+   Logs — source view (OpenObserve-style rows)
+
+   Two columns: a timestamp and the whole record as one line of coloured JSON,
+   with a caret that opens a field/value detail panel. The single-line
+   constraint is the point of the layout — every row is the same height, so a
+   page of results is scannable, and the horizontal scrollbar on .log-list
+   reveals the tail of a long record on demand.
+   ========================================================================== */
+
+/* Shared column geometry. Kept in one place so the header and the rows can
+   never drift apart: the caret and timestamp are fixed, source takes the rest
+   and is allowed to overflow the container's width. */
+.oo-header,
+.oo-row {
+  display: grid;
+  /* Fixed timestamp width, not a fraction: a ragged left edge on the source
+     column is what makes a log table hard to scan. 26px caret + 178px stamp
+     puts every message at the same x on every row. */
+  grid-template-columns: 26px 178px minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 0.6rem;
+}
+
+.logs-main .log-header.oo-header {
+  padding: 0.25rem 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: var(--text-secondary);
+}
+
+.oo-header-ts,
+.oo-header-src {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Vertical scroll only. A record longer than the column is clipped at the right
+   edge rather than widening the row: every row then starts at the same x, which
+   is what makes a page of JSON scannable at all. The full record is one caret
+   click away in the detail panel, so nothing is unreachable. */
+.log-list--source {
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-family: var(--font-mono);
+}
+
+.oo-row-wrap {
+  border-bottom: 1px solid var(--border-color);
+  min-width: 0;
+  transition: background 120ms ease, opacity 120ms ease;
+}
+
+.oo-row-wrap:hover {
+  background: var(--hover-bg);
+}
+
+.oo-row-wrap.dimmed {
+  opacity: 0.35;
+}
+
+.oo-row-wrap.highlighted {
+  background: var(--hover-bg);
+}
+
+.oo-row-wrap.is-open {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Severity from the left edge, matching .log-line / .log-lv in the other two
+   view modes so a row's colour means the same thing everywhere. */
+.oo-row-wrap.sev-FATAL,
+.oo-row-wrap.sev-CRITICAL {
+  box-shadow: inset 3px 0 0 var(--sev-fatal);
+}
+
+.oo-row-wrap.sev-ERROR,
+.oo-row-wrap.sev-ERR {
+  box-shadow: inset 3px 0 0 var(--sev-error);
+}
+
+.oo-row-wrap.sev-WARN,
+.oo-row-wrap.sev-WARNING {
+  box-shadow: inset 3px 0 0 var(--sev-warn);
+}
+
+.oo-row-wrap.sev-INFO {
+  box-shadow: inset 3px 0 0 var(--sev-info);
+}
+
+.oo-row-wrap.sev-DEBUG {
+  box-shadow: inset 3px 0 0 var(--sev-debug);
+}
+
+.oo-row-wrap.sev-TRACE {
+  box-shadow: inset 3px 0 0 var(--sev-trace);
+}
+
+/* Row height trades density against readability. 0.12rem padding (~21px rows)
+   was too tight to scan for hours — lines ran together. 0.3rem/1.45 gives
+   ~26px: still well under the 30px it started at, but with enough breathing
+   room that the eye can track a single line across the width. */
+.oo-row {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+/* Subtle hover, and a selected row that STAYS marked while its detail panel is
+   open — otherwise you lose your place the moment the pointer moves away. */
+.oo-row-wrap.is-open > .oo-row {
+  background: var(--hover-bg);
+}
+
+.oo-row-caret {
+  justify-self: start;
+  /* Sized to the row's line box, not the other way round — a taller button
+     would silently set the floor for every row. */
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.oo-row-caret:hover {
+  color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.oo-row-ts {
+  color: var(--text-primary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The record itself: one line, never wrapped, clipped at the column edge. */
+.oo-row-src {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* ── JSON colouring ─────────────────────────────────────────────────────── */
+.oo-json-punct {
+  color: var(--text-secondary);
+}
+
+.oo-json-key {
+  color: #e06c75;
+}
+
+.oo-json-str {
+  color: #61afef;
+}
+
+.oo-json-num {
+  color: #d19a66;
+}
+
+.oo-json-bool {
+  color: #c678dd;
+}
+
+.oo-json-null {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* ── Expanded record ────────────────────────────────────────────────────── */
+.oo-detail {
+  max-width: 100%;
+  padding: 0.5rem 0.75rem 0.75rem 2rem;
+  border-top: 1px dashed var(--border-color);
+  background: var(--bg-color);
+}
+
+.oo-detail-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.5rem;
+}
+
+.oo-detail-spacer {
+  flex: 1;
+}
+
+.oo-detail-tab {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+}
+
+.oo-detail-tab.is-active {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.oo-detail-action {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--accent-color);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+}
+
+.oo-detail-action:hover {
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.oo-mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.oo-mini-btn:hover {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.oo-mini-btn.is-copied {
+  color: var(--success-color);
+  border-color: var(--success-color);
+}
+
+.oo-detail-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.oo-detail-row {
+  display: grid;
+  grid-template-columns: 54px 190px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 0.6rem;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.72rem;
+}
+
+.oo-detail-row:last-child {
+  border-bottom: none;
+}
+
+.oo-detail-row:hover {
+  background: var(--hover-bg);
+}
+
+.oo-detail-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.oo-detail-key {
+  color: #e06c75;
+  word-break: break-all;
+}
+
+/* Values keep their newlines — a stack trace read as one run-on line is the
+   thing the detail panel exists to avoid. */
+.oo-detail-val {
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: break-word; word-break: normal;
+}
+
+.oo-detail-json {
+  margin: 0;
+  padding: 0.6rem;
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+@media (max-width: 700px) {
+  .oo-header,
+  .oo-row {
+    grid-template-columns: 22px 140px minmax(0, 1fr);
+  }
+
+  .oo-detail-row {
+    grid-template-columns: 50px 130px minmax(0, 1fr);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Toast — floating confirmation, bottom-right. See components/common/Toast.
+
+   Its own block rather than a variant of `.alerts-banner`: that class is an inline
+   full-width bar used across the Alerts screens, and this is a fixed-position card.
+   Sharing it would have meant overriding almost every one of its properties.
+
+   Colours are sampled from the reference: #51a351 fill, white text. Fixed rather
+   than absolute so it is anchored to the viewport regardless of which screen
+   renders it — none of its ancestors establish a containing block for fixed
+   positioning (a scroll `overflow` does not; only transform/filter/contain would).
+   ────────────────────────────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  /* Above the Settings modal backdrop (200), so a confirmation raised as a dialog
+     closes is never painted behind its own backdrop mid-teardown. */
+  z-index: 300;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  width: 375px;
+  max-width: calc(100vw - 48px);
+  padding: 1.25rem 1.5rem;
+  border-radius: 0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  animation: toast-in 160ms ease-out;
+}
+
+.toast--success {
+  background-color: #51a351;
+  color: #000000;
+}
+
+/*
+   The other two tones, built exactly like --success: one solid fill, white text,
+   no border. Deliberately NOT the translucent tints `.alerts-banner--error` uses
+   — a banner sits inside a card and has the card behind it to tint against, and
+   this is a card floating over whatever happens to be under it. A 12%-opacity red
+   here would show the table through the message.
+
+   #d32f2f and #f57c00 are --error-color and --warn-color. Written literally
+   rather than as var() for the same reason --success is: this block is sampled
+   from the reference as a matched set of fills, and a token repointed for the
+   charts would silently take the toast with it.
+*/
+.toast--error {
+  background-color: #d32f2f;
+  color: #ffffff;
+}
+
+.toast--warn {
+  background-color: #f57c00;
+  color: #000000;
+}
+
+/* Errors carry no timer, so they carry the only way out. Inherits the fill's
+   white and dims at rest, which keeps the message the loudest thing in the card
+   rather than the button that removes it. */
+.toast-x {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin: -0.35rem -0.6rem 0 0;
+  padding: 0 0.35rem;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+.toast-x:hover,
+.toast-x:focus-visible {
+  opacity: 1;
+}
+
+.toast-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  /* Nudged to sit on the title's cap height rather than its line box. */
+  margin-top: 2px;
+  color: currentColor;
+}
+
+.toast-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.toast-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.toast-message {
+  font-size: 0.88rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* The slide would be motion for its own sake for anyone who has asked not to have
+   it; the toast still appears, just without travel. */
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

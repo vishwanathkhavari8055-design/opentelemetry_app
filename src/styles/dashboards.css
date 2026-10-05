@@ -1,0 +1,1056 @@
+/* ===========================================================================
+   Grafana dashboards — the Dashboards screen and Settings → Dashboard Catalog.
+
+   Fully namespaced `gd-`, and built ON the existing chrome rather than beside
+   it: the search box is .iam-search, the buttons are .alerts-btn-primary /
+   .iam-switch-btn / .results-bar-btn, the banners are .alerts-banner, the
+   dialog is the `uem-` Settings modal, the footer is .iam-foot. Nothing here
+   restyles any of them.
+
+   Every colour is a token from index.css. That is not tidiness — the panels
+   inside a rendered dashboard are painted by Grafana from a theme built out of
+   those SAME custom properties (see src/grafana/theme.js), so a literal here
+   would be a colour that drifts away from the panels it sits next to, and the
+   result would be *nearly* right, which nobody reports.
+   =========================================================================== */
+
+/* ── Screen shell ──────────────────────────────────────────────────────────── */
+
+.gd-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+/* The viewer manages its own scrolling — the Scenes grid is tall and needs the
+   whole column — so it drops the padding the tile views use. */
+.gd-view--viewer {
+  gap: 0;
+  padding: 0;
+}
+
+.gd-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+.gd-head-title {
+  min-width: 0;
+}
+
+.gd-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gd-subtitle {
+  margin: 0.2rem 0 0;
+  max-width: 72ch;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.gd-foot {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+.gd-dim {
+  color: var(--text-secondary);
+}
+
+/* ── Breadcrumbs ───────────────────────────────────────────────────────────── */
+
+.gd-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.gd-crumb-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-color);
+  font: inherit;
+  cursor: pointer;
+}
+
+.gd-crumb-link:hover {
+  text-decoration: underline;
+}
+
+.gd-crumb-current {
+  color: var(--text-primary);
+}
+
+/* A level collapseSingleChild() skipped past. Present so the path stays legible
+   — "which Default Org.?" — but not a link, because there is no level to go
+   back to. */
+.gd-crumb-ghost {
+  color: var(--text-secondary);
+  opacity: 0.75;
+}
+
+/* ── One scroll region per level ────────────────────────────────────────────
+   The folder tiles and the dashboard tiles under them scroll TOGETHER. Letting
+   each be its own scroller is what made a folder holding both show a sliver of
+   each instead of one list. */
+
+.gd-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* The grid no longer scrolls itself — .gd-scroll above does — so it must size to
+   its content rather than to a share of the column. */
+.gd-scroll > .gd-tiles {
+  overflow: visible;
+  flex: 0 0 auto;
+}
+
+/* ── Tiles ─────────────────────────────────────────────────────────────────
+   One grid for both levels — folders and dashboards — because they are the same
+   gesture at two depths, and a second geometry would make the second click feel
+   like a different screen.
+
+   auto-fill, not auto-fit: a deployment with one registered folder should show a
+   card, not a banner stretched across the viewport. */
+
+.gd-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 0.6rem;
+  align-content: start;
+  overflow: auto;
+  min-height: 0;
+}
+
+.gd-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.gd-tile:hover {
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.gd-tile:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+.gd-tile-icon {
+  display: flex;
+  align-items: center;
+  color: var(--accent-color);
+}
+
+.gd-tile-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.gd-tile-count {
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+.gd-tile-count strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* The UID, on a dashboard tile. Monospace and dim: it is the thing you copy when
+   something is wrong, not the thing you read when everything is fine. */
+.gd-tile-uid {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+/* "3 disabled", or a Grafana folder that no longer matches the tile. Amber
+   because both are worth noticing and neither is an error. */
+.gd-tile-note {
+  color: var(--warn-color);
+  font-size: 0.68rem;
+}
+
+/* ── States ────────────────────────────────────────────────────────────────── */
+
+.gd-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-height: 180px;
+  padding: 2rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  text-align: center;
+}
+
+.gd-state-title {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* The backend's own sentence, verbatim. Wide enough to read as prose because it
+   usually names the fix. */
+.gd-state-detail {
+  max-width: 68ch;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.gd-state-hint {
+  max-width: 68ch;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+/* The error card gets the tinted-fill treatment the reference uses for its own
+   failure states, rather than red text on the plain panel surface. Two reasons:
+   the fill is what makes this card distinguishable from the loading card at a
+   glance, and a red *border* around a full-width panel would read as far more
+   alarming than "this one dashboard did not load". */
+.gd-state--error {
+  border-color: var(--scene-danger);
+  background: var(--scene-danger-soft);
+}
+
+.gd-state--error .gd-state-title {
+  color: var(--error-color);
+}
+
+.gd-state button {
+  margin-top: 0.35rem;
+}
+
+/* The loading card. Deliberately wordless: a sentence naming Grafana, the UID or
+   the download that is in flight told the user nothing they could act on, and
+   read as a warning every time the screen was simply working. A quiet spinner on
+   the same panel surface says "busy" and nothing else, so the only card on this
+   screen that carries prose is the one that actually needs a decision. */
+.gd-state--loading {
+  gap: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.gd-loader {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: gd-spin 700ms linear infinite;
+}
+
+/* The animation is the whole message here, so when it is suppressed the ring
+   still has to read as "in progress" rather than as a stray circle. */
+@media (prefers-reduced-motion: reduce) {
+  .gd-loader { animation: none; opacity: 0.6; }
+}
+
+/* ── Viewer: toolbar ───────────────────────────────────────────────────────── */
+
+/* ── Viewer: the scene palette ─────────────────────────────────────────────
+   One element re-points the app's palette tokens at the --scene-* palette
+   index.css declares, and every rule below inherits it through the cascade.
+
+   This is why the rest of this file still says `var(--surface-color)` rather
+   than `var(--scene-surface)`: custom properties inherit, so a rule written
+   against the app token resolves to the scene value inside .gd-viewer and to
+   the app value everywhere else. Rewriting sixty declarations to --scene-*
+   would have produced the same pixels and a file that then had to be kept in
+   step by hand — and the `uem-`/`alerts-` controls this screen borrows from
+   iam.css and alerts.css would have gone on using the app greys, which is
+   exactly the half-themed toolbar this block exists to avoid.
+
+   --error-color and --warn-color are deliberately NOT remapped. This is a
+   monitoring console: a failed dashboard fetch and a stale-data warning must
+   not read as "teal", and the panels' own threshold colours (the HEALTHY /
+   WARNING / CRITICAL dots and tinted cells, which come from each dashboard's
+   fieldConfig in Grafana, not from here) stay as authored so the colour
+   legends printed in the panel titles keep telling the truth. */
+
+.gd-viewer {
+  --bg-color: var(--scene-bg);
+  --surface-color: var(--scene-surface);
+  --border-color: var(--scene-border);
+  --hover-bg: var(--scene-tint);
+  --accent-color: var(--scene-accent);
+  --text-primary: var(--scene-text);
+  --text-secondary: var(--scene-ink-muted);
+  /* The scene's own error/warning, not the app's — see theme.js on why the app
+     hues go muddy on a #262626 panel. Remapped here so the CSS chrome (a failed
+     fetch, a stale-data note) agrees with what @grafana/ui paints inside the
+     panels, which now reads the same two tokens. */
+  --error-color: var(--scene-danger-text);
+  --warn-color: var(--scene-warning-text);
+  /* index.css uses --company-bg as a recessed fill (inline code, `pre`, table
+     headings in text panels). The scene has no seventh shade for that, so it
+     recesses to the canvas colour — a well behind the panel surface. */
+  --company-bg: var(--scene-bg);
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.gd-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.gd-toolbar-title {
+  min-width: 0;
+}
+
+/* Sizes below are px, not rem, and match grafana-embed's .msm-head. The panel
+   titles @grafana/ui draws inside the scene are px off the theme, so a toolbar
+   in rem drifts against them the moment anyone changes the root font size — and
+   "the dashboard title is a different size from the panel titles" is the kind of
+   thing that reads as broken without being nameable. */
+.gd-toolbar-heading {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* UID · version · folder. The version is here rather than hidden because "am I
+   looking at the edit that was just saved in Grafana" is a real question — but
+   it is reference material, not something to read on the way past, so it sits at
+   the faintest step of the ladder. */
+.gd-toolbar-sub {
+  display: block;
+  margin-top: 3px;
+  color: var(--scene-ink-faint);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.gd-toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+/* 34px on both, as in the reference. .ae-select's own height comes from
+   alerts.css; this only widens them, so the control keeps whatever height that
+   file defines and the two selects stay the same size as each other. */
+.gd-range {
+  min-width: 168px;
+}
+
+.gd-refresh {
+  min-width: 110px;
+}
+
+/* Spins only while a manual refresh is in flight. */
+.gd-spin {
+  animation: gd-spin 700ms linear infinite;
+}
+
+@keyframes gd-spin {
+  to { transform: rotate(360deg); }
+}
+
+.gd-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--scene-ink-subtle);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* 9px to match the severity dots the panels draw, so the one dot in the chrome
+   is the same object as the ones in the tables rather than a smaller cousin. */
+.gd-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--scene-ink-faint);
+}
+
+.gd-dot.is-live {
+  background: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--scene-accent-ring);
+}
+
+/* ── Viewer: the scene ─────────────────────────────────────────────────────
+   Grafana's SceneGridLayout is absolutely positioned and sizes itself to its
+   container, so this element owns the scroll. --bg-color rather than the panel
+   surface: it is the canvas BEHIND the panels, and it has to match the
+   `background.canvas` the Grafana theme is given or the grid gutters read as a
+   different shade from the page. */
+
+.gd-scene {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--scene-pad);
+
+  /* The canvas, plus one very faint teal bloom behind the top of the grid.
+     Ported from grafana-embed's .scene-wrap: it is barely visible (5% accent
+     over 1200x420px) and does exactly one job — a full-bleed flat #131313 under
+     a grid of #262626 panels reads as an unstyled container, and this gives the
+     surface a light source without introducing a colour or a border. */
+  background:
+    radial-gradient(1200px 420px at 50% -160px, rgba(0, 150, 136, 0.05), transparent 70%),
+    var(--scene-bg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scene-stroke) transparent;
+}
+
+/* ── Panel tiles must clip their own content ───────────────────────────────
+   Scenes positions each panel through react-grid-layout, which does NOT clip:
+   a wide table or a long legend paints straight over the neighbouring tile and
+   over the gutter, and because the grid items are absolutely positioned the
+   overflow is invisible to the panel's own scroll container. Both selectors are
+   needed — Scenes has moved between the two over versions, and keeping the pair
+   means this survives a @grafana/scenes bump either way.
+
+   Deliberately `overflow: hidden` ALONE, without the `contain: paint` the
+   reference pairs it with. Clipping is the whole objective here; `contain` only
+   adds repaint containment, and it does so by making the element a containing
+   block for absolutely-positioned descendants and a new stacking context. That
+   is a layout-semantics change inside a subtree whose positioning belongs to
+   react-grid-layout and @grafana/ui, and it is not worth taking on for a repaint
+   optimisation on a twelve-panel dashboard.
+
+   Both selectors resolve to the SAME element — Scenes' GridItemWrapper is the
+   div react-grid-layout classes as .react-grid-item, and it stamps
+   data-griditem-key on it — so this is one rule written twice on purpose:
+   .react-grid-item comes from react-grid-layout and data-griditem-key from
+   Scenes, and either could be renamed independently.
+
+   Scoped to .gd-scene rather than declared globally (the reference can afford
+   global — its whole app is the scene viewer; this one has eight other screens). */
+.gd-scene .react-grid-item {
+  overflow: hidden;
+}
+
+.gd-scene [data-griditem-key] {
+  overflow: hidden !important;
+}
+
+/* ── Scrollbars ───────────────────────────────────────────────────────────
+   A scene has a scrollbar per wide table plus one for the canvas, so these are
+   more of the surface here than anywhere else in the app.
+
+   This block no longer exists to work around a broken global rule — the two
+   undeclared custom properties it used to compensate for are fixed at source in
+   index.css. What remains is a deliberate scene-specific treatment: 10px wide
+   with a padded 4px thumb on the scene palette, which is what Grafana's own
+   dashboards look like and is a heavier scrollbar than the app's 8px default
+   because a dense table panel has several of them side by side. */
+.gd-scene ::-webkit-scrollbar,
+.gd-scene::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.gd-scene ::-webkit-scrollbar-track,
+.gd-scene::-webkit-scrollbar-track,
+.gd-scene ::-webkit-scrollbar-corner,
+.gd-scene::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* The 3px transparent border + content-box clip is what makes a 10px-wide
+   scrollbar draw a 4px-wide thumb with padding around it, rather than a thin
+   thumb in a wide gutter. */
+.gd-scene ::-webkit-scrollbar-thumb,
+.gd-scene::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--scene-stroke);
+  background-clip: content-box;
+}
+
+.gd-scene ::-webkit-scrollbar-thumb:hover,
+.gd-scene::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scene-stroke-strong);
+  background-clip: content-box;
+}
+
+/* The variable pickers no longer exist to style: buildScene.js passes no
+   `controls` to the EmbeddedScene, so the submenu row above the grid is never
+   rendered (the variables themselves still interpolate — see the note there).
+   Nothing needs adding here for that; the notes below are kept because the
+   selector they warn about is the one you would reach for if the row ever
+   comes back.
+
+   The rule that used to colour-force those pickers is gone, for two
+   independent reasons — either alone would be
+   enough:
+
+   1. It never matched. Scenes stamps the label's test id through
+      selectors.pages.Dashboard.SubMenu.submenuItemLabels(label), which is
+      `data-testid Dashboard template variables submenu Label ${label}` — the
+      variable's own name is always appended. The selector tested for exact
+      equality with no suffix, so it matched zero elements on every dashboard
+      this app has ever rendered.
+   2. It is now the theme's job and the theme now arrives. Scenes' ControlsLabel
+      styles itself `color: theme.colors.text.secondary` via useStyles2, which
+      resolves through SceneThemeProvider to --scene-ink-muted. Forcing the app's
+      --text-secondary on top would have re-introduced the app grey inside the
+      scene palette — the exact drift theme.js exists to prevent.
+
+   Worth keeping as a note rather than deleting silently: a dead selector that
+   looks plausible is how a fix gets attributed to the wrong layer twice. */
+
+/* ── Placeholder for a panel type this app has no renderer for ─────────────
+   Styled as a legible, deliberate statement rather than an error: the other
+   nineteen panels on the dashboard are fine, and this tile says so. */
+
+.viz-unsupported {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.viz-unsupported-icon {
+  font-size: 1.1rem;
+  opacity: 0.6;
+}
+
+.viz-unsupported-title {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.viz-unsupported-id {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.viz-unsupported-hint {
+  font-size: 0.68rem;
+  opacity: 0.8;
+}
+
+/* ── Dynamic text panels ──────────────────────────────────────────────────
+   A sandboxed iframe (src/grafana/panelDynamicText.jsx). Only its box is styled
+   here: everything inside is the dashboard author's own document, and the frame
+   is transparent so the panel's own background shows through around it. */
+
+.viz-dynamic-text {
+  display: block;
+  border: none;
+  background: transparent;
+}
+
+/* ── Text panels ──────────────────────────────────────────────────────────
+   Rendered per the panel's mode and sanitised by src/grafana/panelText.js. The
+   `code` mode path lands in the `pre`; markdown and html land in .viz-text-body.
+
+   Only the essentials are styled. These panels are dashboard section headers
+   authored in Grafana, and they carry their own inline styling — over-styling
+   here would fight the author rather than support them. */
+
+.viz-text-panel {
+  overflow: auto;
+  padding: 0.5rem;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.viz-text-panel pre {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: break-word; word-break: normal;
+}
+
+.viz-text-body > :first-child { margin-top: 0; }
+.viz-text-body > :last-child { margin-bottom: 0; }
+
+.viz-text-body h1,
+.viz-text-body h2,
+.viz-text-body h3,
+.viz-text-body h4 {
+  margin: 0.5em 0 0.35em;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.viz-text-body p,
+.viz-text-body ul,
+.viz-text-body ol {
+  margin: 0.4em 0;
+}
+
+.viz-text-body ul,
+.viz-text-body ol {
+  padding-left: 1.3em;
+}
+
+.viz-text-body a {
+  color: var(--accent-color);
+}
+
+.viz-text-body hr {
+  margin: 0.5em 0;
+  border: 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.viz-text-body code {
+  padding: 0.05em 0.3em;
+  border-radius: 3px;
+  background: var(--company-bg);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.viz-text-body pre {
+  padding: 0.5em;
+  border-radius: 4px;
+  background: var(--company-bg);
+}
+
+/* Authored tables scroll rather than widen the panel. */
+.viz-text-body table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.viz-text-body th,
+.viz-text-body td {
+  padding: 0.2em 0.5em;
+  border: 1px solid var(--border-color);
+  text-align: left;
+}
+
+.viz-text-body img {
+  max-width: 100%;
+}
+
+/* A table panel whose query returned several frames. Grafana shows a frame
+   selector rather than silently dropping the rest, and so do we. */
+.viz-frame-picker {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding-top: 0.2rem;
+}
+
+.viz-frame-picker button {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.viz-frame-picker button.on {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* ===========================================================================
+   Settings → Dashboard Catalog
+
+   Flattened into the `.iam-main` panel the same way ProductCatalogView and
+   ResourceUsageView are, so the Settings screen still reads as ONE card rather
+   than a card containing a card.
+   =========================================================================== */
+
+.iam-main > .gd-catalog {
+  flex: 1;
+  min-height: 0;
+}
+
+.gd-catalog {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 0;
+}
+
+.gd-cat-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.gd-cat-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* ── Registry table ───────────────────────────────────────────────────────── */
+
+.gd-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  overflow: hidden;
+}
+
+.gd-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.gd-row {
+  display: grid;
+  /* Order · Dashboard · UID · Folder · Status · Actions.
+     Order is a two-digit spinner, so it gets the narrowest fixed track. The
+     folder cell holds a SELECT plus an optional mismatch note, which is why it
+     is the second-widest — a truncated folder name in a control you are about to
+     change with is worse than a truncated title you are only reading. Actions is
+     fixed so the three buttons never wrap onto a second line. */
+  grid-template-columns:
+    76px                     /* order     */
+    minmax(180px, 2.0fr)     /* dashboard */
+    minmax(120px, 1.0fr)     /* uid       */
+    minmax(170px, 1.6fr)     /* folder    */
+    minmax(105px, 0.7fr)     /* status    */
+    240px;                   /* actions   */
+  align-items: center;
+  column-gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+}
+
+.gd-row--head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.gd-row > span {
+  min-width: 0;
+}
+
+/* Everything except the cells that own their own layout. */
+.gd-row > span:not(.gd-actions):not(.gd-folder) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gd-body .gd-row:hover {
+  background: var(--hover-bg);
+}
+
+.gd-name {
+  color: var(--text-primary);
+}
+
+.gd-uid {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.gd-order {
+  width: 100%;
+  padding: 0.18rem 0.3rem;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  text-align: center;
+}
+
+.gd-folder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.gd-folder .ae-select {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Where the dashboard actually lives in Grafana, when that is not the tile it is
+   filed under. Amber, not red: it is a legitimate configuration and often an
+   intentional one — but it is the fact that explains a surprising tile. */
+.gd-mismatch {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: var(--scene-warning-soft);
+  color: var(--warn-color);
+  font-size: 0.66rem;
+}
+
+.gd-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--company-bg);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.gd-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.gd-status-chip--on {
+  color: var(--accent-color);
+}
+
+.gd-status-chip--on .gd-status-dot {
+  background: var(--accent-color);
+}
+
+.gd-status-chip--off {
+  color: var(--text-secondary);
+}
+
+.gd-status-chip--off .gd-status-dot {
+  background: var(--text-secondary);
+}
+
+.gd-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: nowrap;
+}
+
+/* Remove. Coloured on HOVER only: it deletes nothing in Grafana, so a
+   permanently red button in every row would overstate what it does and, worse,
+   train people to ignore red. */
+.gd-danger:hover:not(:disabled) {
+  border-color: var(--error-color);
+  color: var(--error-color);
+}
+
+/* ── Register dialog: the candidate list ───────────────────────────────────
+   Sits inside the `uem-` modal body. Height-capped and scrollable because a
+   Grafana folder can legitimately hold forty dashboards, and the dialog's
+   footer buttons must stay reachable. */
+
+.gd-dialog .uem-body {
+  max-height: min(70vh, 620px);
+  overflow-y: auto;
+}
+
+.gd-candidates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.gd-candidates-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+.gd-count {
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+
+.gd-candidate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 240px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.gd-candidate-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.28rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.76rem;
+}
+
+.gd-candidate-list li:hover {
+  background: var(--hover-bg);
+}
+
+.gd-candidate-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.gd-candidate-uid {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+/* ── Narrow viewports ─────────────────────────────────────────────────────
+   The registry table's six tracks do not fit below ~1100px. Rather than let it
+   scroll horizontally — which hides the Actions column, the only reason to be on
+   this screen — the rows become stacked blocks. */
+
+@media (max-width: 1100px) {
+  .gd-row {
+    grid-template-columns: 76px minmax(0, 1fr) minmax(0, 1fr);
+    row-gap: 0.35rem;
+  }
+
+  .gd-row--head {
+    display: none;
+  }
+
+  .gd-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ── Cascading folder picker ───────────────────────────────────────────────
+   Wraps rather than scrolls: this instance nests four deep, and four dropdowns
+   on one line inside the Settings modal would each be too narrow to read the
+   folder titles they exist to show. */
+
+.gd-cascade {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.gd-cascade-step {
+  flex: 1 1 11rem;
+  min-width: 0;
+}
+
+/* The full path of whatever the cascade currently adds up to — the one thing the
+   level-by-level control cannot show, and the thing the registry actually
+   stores. */
+.gd-cascade-path {
+  margin-top: 0.35rem;
+}

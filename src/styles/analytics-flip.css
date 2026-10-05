@@ -1,0 +1,198 @@
+/* ===========================================================================
+   Analytics Flip Deck — the two-sided Analytics Dashboard.
+
+   The deck owns the whole content area as a flex column: a fixed bar with the
+   title and the face switch, and a stage beneath it that flexes to fill what is
+   left. Each face is itself a full-height flex column that scrolls internally, so
+   the bar never scrolls away from the screen it is switching.
+
+   ─── The flip is half a rotation at a time ─────────────────────────────────
+
+   Only ONE face is mounted, because each face polls OpenObserve on an interval and
+   a permanently-mounted hidden face would double the query load to animate
+   something nobody is looking at. So the deck rotates the stage out to edge-on,
+   swaps the face there where the change is not visible, and rotates back in.
+
+   That means .is-out and .is-in are two halves of one effect and the JS timing in
+   AnalyticsFlipDeck (HALF_FLIP_MS) has to match the duration here. Changing one
+   without the other shows the swap mid-rotation.
+   =========================================================================== */
+
+.anf-deck {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ── The bar ──────────────────────────────────────────────────────────────────
+   Outside the rotating stage on purpose. A control that spins away mid-flip cannot
+   be clicked again, and it has to stay put to read as the same control rather than
+   as part of the content it switches. */
+
+.anf-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  padding: 0.75rem 0.75rem 0;
+}
+
+.anf-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  font-weight: 700;
+  /* Takes the slack so the switch and the flip button sit together on the right,
+     where every other screen in this app puts its controls. */
+  margin-right: auto;
+}
+
+/* ── Face switch ─────────────────────────────────────────────────────────────
+   A segmented control rather than a dropdown: there are two faces, both worth
+   naming, and a select would hide the alternative behind a click. */
+
+.anf-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--company-bg);
+}
+
+.anf-switch-btn {
+  padding: 0.3rem 0.7rem;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.anf-switch-btn:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg);
+}
+
+.anf-switch-btn.is-active {
+  background: var(--accent-color);
+  color: var(--company-bg);
+}
+
+.anf-switch-btn:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+/* The blind flip. Named tabs are how you go to a specific face; this is how you
+   flip back and forth comparing the two, which is the point of two sides. */
+.anf-flip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.anf-flip-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--accent-color);
+}
+
+/* Disabled only WHILE a flip runs, so a second click cannot land the deck on a
+   face nobody asked for. */
+.anf-flip-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.anf-flip-btn:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+/* ── The stage ───────────────────────────────────────────────────────────────── */
+
+.anf-stage {
+  flex: 1;
+  min-height: 0;
+  /* Deep enough that the rotation reads as a card turning rather than a page being
+     sucked into the distance. */
+  perspective: 1800px;
+  transform-origin: center center;
+  transition: transform 190ms ease-in, opacity 190ms ease-in;
+}
+
+/* Rotating out. Not all the way to 90° — a stage that reaches true edge-on
+   disappears for a frame and the flip reads as a flicker. */
+.anf-stage.is-out {
+  transform: rotateY(-78deg) scale(0.97);
+  opacity: 0.1;
+}
+
+/* The incoming half, set in the same commit as the face swap and therefore with NO
+   transition: it snaps to the far side rather than animating there, so the new face
+   is never seen rotating the wrong way. The class then changes to is-idle and the
+   base transition above brings it home. */
+.anf-stage.is-in {
+  transform: rotateY(78deg) scale(0.97);
+  opacity: 0.1;
+  transition: none;
+}
+
+.anf-stage.is-idle {
+  transform: rotateY(0) scale(1);
+  opacity: 1;
+}
+
+/* Each face is a full-height flex column that scrolls internally. Without this the
+   face collapses to its content height inside the flexed stage and its own sticky
+   headers have nothing to stick to. */
+.anf-stage > * {
+  height: 100%;
+  min-height: 0;
+}
+
+/* The deck supplies the screen's h1, so the face must not repeat it. The Drill
+   Table's own title is hidden rather than deleted from the component: that view
+   still renders standalone, and its breadcrumb — the sibling this rule leaves
+   alone — is the part that carries state. */
+.anf-stage .an-title {
+  display: none;
+}
+
+/* The bar already paid for the top gap. */
+.anf-stage .an-view,
+.anf-stage .acb-view {
+  padding-top: 0.5rem;
+}
+
+/* Motion is decoration here — the tab strip and the face itself both say which side
+   you are on, so removing the rotation costs nothing. The JS timings still run;
+   they simply have nothing to animate, which keeps one state machine rather than
+   two code paths. */
+@media (prefers-reduced-motion: reduce) {
+  .anf-stage,
+  .anf-stage.is-out,
+  .anf-stage.is-in,
+  .anf-stage.is-idle {
+    transform: none;
+    opacity: 1;
+    transition: none;
+  }
+}

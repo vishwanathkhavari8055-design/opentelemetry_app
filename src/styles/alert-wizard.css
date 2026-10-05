@@ -1,0 +1,2028 @@
+/* ==========================================================================
+   Alert creation wizard — the two-step replacement for the create half of
+   AlertEditor. Editing still uses the editor, so nothing here may override an
+   `.ae-*` rule; the wizard BORROWS .alerts-editor, .ae-topbar, .ae-back,
+   .ae-card, .ae-card-head and the two button classes, and adds only what has no
+   equivalent already: the catalog picker, and step 2's tabs, cards and rail.
+
+   There is no step-progress rail. Two steps shown one at a time, with Back and
+   Next in the footer, do not need a diagram of themselves above them.
+
+   Built on the existing token set (--accent-color / --surface-color /
+   --company-bg / --border-color / --hover-bg / --text-*), so it follows the
+   theme without declaring a colour of its own.
+
+   The picker deliberately reads like the Logs field sidebar's product tree
+   (.pt-* in logs-query.css) — same question, same shape — but does not reuse
+   those classes. Sharing them would mean a change made for the Logs sidebar
+   silently restyles alert creation, which is exactly the coupling the duplicate
+   component avoids.
+   ========================================================================== */
+
+.aw {
+  /* Inherits the column layout from .alerts-editor; this only adds the rows the
+     editor has no equivalent for. */
+  overflow: hidden;
+}
+
+/* ── Title strip ────────────────────────────────────────────────────────── */
+
+.aw-topbar {
+  align-items: center;
+}
+
+.aw-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.aw-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.aw-subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+}
+
+/* ── Step panel ─────────────────────────────────────────────────────────── */
+
+.aw-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 0.75rem;
+}
+
+.aw-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  /* Overrides .ae-card's flex-shrink: 0 — the panel is the thing that scrolls,
+     so it has to be allowed to be shorter than its content. */
+  flex-shrink: 1;
+}
+
+.aw-panel-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Placeholder body for steps 2 and 3 until they are built. */
+.aw-todo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  flex: 1;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.aw-todo-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.aw-todo-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+
+.aw-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 0.6rem 0.9rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.aw-foot-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.aw-foot-key {
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.aw-foot-val {
+  overflow: hidden;
+  max-width: 28ch;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--accent-color);
+  border-radius: 999px;
+  color: var(--accent-color);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aw-foot-hint {
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+}
+
+.aw-foot-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Step 1 — the Product Catalog picker
+   ========================================================================== */
+
+.awp {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Search and the telemetry filter share a row: they are the two things that
+   narrow the tree, and splitting them onto two rows cost a line of height for no
+   grouping benefit. It wraps rather than squeezing, so the toggle's label is
+   never clipped to "Only services with tele…". */
+.awp-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  margin: 0.6rem 0.75rem;
+}
+
+.awp-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+}
+
+.awp-live-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.awp-live-toggle input {
+  margin: 0;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.awp-live-toggle:hover { color: var(--text-primary); }
+
+.awp-search:focus-within { border-color: var(--accent-color); }
+
+.awp-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+}
+
+.awp-tree {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 0.5rem 0.75rem;
+}
+
+.awp-empty,
+.awp-note {
+  padding: 0.5rem 0.55rem;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.awp-note {
+  padding: 0.2rem 0.55rem 0.3rem;
+  font-size: 0.7rem;
+  font-style: italic;
+}
+
+.awp-note--warn {
+  color: #ffa726;
+  font-style: normal;
+}
+
+.awp-note-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-color);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.awp-note-link:hover { color: var(--text-primary); }
+
+/* ── Category row ───────────────────────────────────────────────────────── */
+
+.awp-cat { border-radius: 5px; }
+
+.awp-cat.is-open { background: rgba(255, 255, 255, 0.02); }
+
+.awp-cat-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.3rem 0.5rem;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.awp-cat-head:hover { background: var(--hover-bg); }
+
+.awp-cat.is-open .awp-cat-head { color: var(--accent-color); }
+
+/* Categories with nothing registered stay visible but recede: the taxonomy is
+   still legible, and an empty row is the prompt to go and register something.
+   A category that vanished when empty would read as a broken screen. */
+.awp-cat.is-empty .awp-cat-name { color: var(--text-secondary); }
+
+.awp-caret {
+  flex-shrink: 0;
+  width: 0.7rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.awp-cat-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.awp-count {
+  flex-shrink: 0;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.awp-cat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.1rem 0 0.3rem 0.75rem;
+}
+
+/* ── Product tier (Applications registers through one; nothing else does) ── */
+
+.awp-product { display: flex; flex-direction: column; }
+
+.awp-product-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+
+.awp-product-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+/* ── Resource row ───────────────────────────────────────────────────────── */
+
+.awp-res-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  padding-left: 0.35rem;
+}
+
+.awp-res {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.awp-res:hover { background: var(--hover-bg); }
+
+.awp-res input {
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.awp-res.is-on {
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+  color: var(--accent-color);
+}
+
+/* Registered but DISABLED in the catalog: its telemetry is hidden everywhere, so
+   an alert on it could never fire. Shown rather than hidden, because "disabled"
+   and "never registered" call for opposite fixes. */
+.awp-res.is-off {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.awp-res.is-off input { cursor: not-allowed; }
+.awp-res.is-off .awp-res-name { text-decoration: line-through; }
+
+.awp-res-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The identifier telemetry actually uses, shown only when it differs from the
+   label — a silent mismatch is how an alert stops matching its own service. */
+.awp-res-id,
+.awp-off-tag {
+  flex-shrink: 0;
+  padding: 0 0.3rem;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  font-size: 0.58rem;
+}
+
+.awp-off-tag {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+/* ── Per-signal volume ──────────────────────────────────────────────────── */
+
+/* Right-aligned and fixed in order (logs, then traces) so the numbers form two
+   readable columns down the list rather than shifting with each row's name. */
+.awp-signals {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.awp-sig {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  font-family: var(--font-sans);
+  font-size: 0.6rem;
+}
+
+/* Fixed width per pill, so "240K" and "—" occupy the same space and the two
+   signal columns stay aligned regardless of magnitude. */
+.awp-sig-count {
+  min-width: 2.6ch;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.awp-sig-label {
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.awp-sig.is-live .awp-sig-count { color: var(--text-primary); }
+
+/* This signal reported nothing — a statement, so it only renders once that
+   signal actually answered. Dim rather than amber: one quiet signal is normal
+   (plenty of services log and emit no spans), and the amber below is reserved
+   for a service that is silent on BOTH. */
+.awp-sig.is-quiet {
+  opacity: 0.55;
+}
+
+/* Registered, enabled, and producing nothing at all. Still selectable — see the
+   note in ServiceCatalogPicker — so this is a flag, not a disabled state, and it
+   is drawn in the same amber the Logs tree uses for the same claim. */
+.awp-quiet-tag {
+  flex-shrink: 0;
+  padding: 0 0.35rem;
+  border: 1px solid #ffa726;
+  border-radius: 3px;
+  color: #ffa726;
+  font-family: var(--font-sans);
+  font-size: 0.6rem;
+  white-space: nowrap;
+}
+
+.awp-res.is-silent .awp-res-name { color: #ffa726; }
+
+/* ── Footer warning ─────────────────────────────────────────────────────── */
+
+.aw-foot-warn {
+  flex-shrink: 0;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid #ffa726;
+  border-radius: 999px;
+  color: #ffa726;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   The same wizard, repainted to the Settings spec.
+
+   The Alerts section is drawn to styles/alerts-settings.css: the #262626 page,
+   the #404040 frame, Open Sans and SQUARE edges, all keyed off `--set-*` tokens
+   declared on `.alerts-shell`. The wizard renders inside that shell, so every
+   surface above that reached for `--border-color` / `--surface-color` /
+   `--accent-color` has to be restated here in the screen's own tokens —
+   otherwise the rail and the picker are the one rounded, differently-grey thing
+   on an otherwise square screen.
+
+   Scoped selectors are (0,2,0) and so outrank the base rules above on
+   specificity, not on order. Each states `border-radius: 0` outright rather than
+   leaning on a blanket `.alerts-shell *`, for the reason alerts-settings.css
+   gives: that selector is only (0,1,0) and any later single-class rule wins.
+   ========================================================================== */
+
+.alerts-shell .aw-title { color: var(--set-ink); }
+.alerts-shell .aw-subtitle { color: var(--set-ink-dim); }
+
+.alerts-shell .aw-body { padding: var(--set-band-inset); }
+
+.alerts-shell .aw-todo-title { color: var(--set-ink); }
+.alerts-shell .aw-todo-note { color: var(--set-ink-faint); }
+
+.alerts-shell .aw-foot {
+  padding: 0.6rem var(--set-band-inset);
+  border-top: 1px solid var(--set-line);
+  background: var(--set-panel);
+}
+
+.alerts-shell .aw-foot-key { color: var(--set-ink-faint); }
+.alerts-shell .aw-foot-hint { color: var(--set-ink-faint); }
+
+.alerts-shell .aw-foot-val {
+  border-radius: 0;
+  border-color: var(--set-accent);
+  background: var(--set-badge);
+  color: var(--set-ink);
+}
+
+/* ── Step 1, in the screen's own palette ────────────────────────────────── */
+
+.alerts-shell .awp-search {
+  border-radius: 0;
+  border-color: var(--set-line);
+  background: var(--set-panel);
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .awp-search:focus-within { border-color: var(--set-accent); }
+.alerts-shell .awp-search input { color: var(--set-ink); }
+
+.alerts-shell .awp-empty,
+.alerts-shell .awp-note { color: var(--set-ink-faint); }
+.alerts-shell .awp-note--warn { color: #ffa726; }
+.alerts-shell .awp-note-link { color: var(--set-accent); }
+.alerts-shell .awp-note-link:hover { color: var(--set-ink); }
+
+.alerts-shell .awp-cat { border-radius: 0; }
+.alerts-shell .awp-cat.is-open { background: transparent; }
+
+.alerts-shell .awp-cat-head {
+  border-radius: 0;
+  color: var(--set-ink);
+}
+
+.alerts-shell .awp-cat-head:hover { background: var(--set-row-hover); }
+.alerts-shell .awp-cat.is-open .awp-cat-head { color: var(--set-accent); }
+.alerts-shell .awp-cat.is-empty .awp-cat-name { color: var(--set-ink-faint); }
+.alerts-shell .awp-caret { color: var(--set-ink-faint); }
+
+.alerts-shell .awp-count {
+  border-radius: 0;
+  border-color: var(--set-line);
+  background: var(--set-panel);
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .awp-product-name { color: var(--set-ink-faint); }
+.alerts-shell .awp-product-head { border-radius: 0; }
+
+.alerts-shell .awp-res {
+  border-radius: 0;
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .awp-res:hover { background: var(--set-row-hover); }
+.alerts-shell .awp-res input { accent-color: var(--set-accent); }
+
+/* `color-mix` is stated in the base rule; here the screen's own selected-row
+   fill is a flat token, so the selected service matches a selected table row
+   rather than approximating one. */
+.alerts-shell .awp-res.is-on {
+  background: var(--set-badge);
+  color: var(--set-ink);
+}
+
+.alerts-shell .awp-res-id,
+.alerts-shell .awp-off-tag {
+  border-radius: 0;
+  border-color: var(--set-line);
+  color: var(--set-ink-faint);
+}
+
+/* ── Live telemetry, in the screen's own palette ─────────────────────────── */
+
+.alerts-shell .awp-live-toggle { color: var(--set-ink-dim); }
+.alerts-shell .awp-live-toggle:hover { color: var(--set-ink); }
+.alerts-shell .awp-live-toggle input { accent-color: var(--set-accent); }
+
+.alerts-shell .awp-sig {
+  border-radius: 0;
+  border-color: var(--set-line);
+}
+
+.alerts-shell .awp-sig-label { color: var(--set-ink-faint); }
+.alerts-shell .awp-sig.is-live .awp-sig-count { color: var(--set-ink); }
+
+/* Amber survives the repaint unchanged. It is the one colour on this screen that
+   carries a meaning rather than a style — the Logs tree uses the same value for
+   the same claim — and swapping it for a Settings-spec grey would turn a warning
+   into decoration. */
+.alerts-shell .awp-quiet-tag,
+.alerts-shell .aw-foot-warn {
+  border-radius: 0;
+}
+
+
+/* ==========================================================================
+   Step 2 — Define Conditions
+   ==========================================================================
+
+   A label column with controls flowing off it, which is the shape OpenObserve's
+   own Conditions card uses and the shape the questions have: every row is one
+   named decision plus however many controls that decision needs. One shared
+   label width is what lets "Alert if", "Group by" and "Check every" line their
+   controls up down a single edge — without it the screen reads as a pile of
+   unrelated widgets rather than as one form.
+
+   Controls are the editor's own .ae-input / .ae-select, so a select here and a
+   select in the one-screen editor are the same control. Only the widths, and the
+   few things the editor has no equivalent for, are declared below.
+   ========================================================================== */
+
+.aw-cond {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  /* THIS is the step's scroller. `.aw-panel-body` is overflow:hidden because
+     step 1's picker scrolls its own tree inside a fixed frame; step 2 is a plain
+     form of unbounded height, so it has to do its own scrolling or its lower
+     rows are simply clipped away with no way to reach them. The right padding
+     keeps the scrollbar off the controls' right edge. */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.aw-cond-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+}
+
+/* Rows whose controls may not fit on one line — Group by grows a select per
+   column, and Check every carries a unit, a timezone and the filters toggle. */
+.aw-cond-row--wrap {
+  flex-wrap: wrap;
+}
+
+/* Critical / Warning hang UNDER "Alert if" rather than beside it: they are not
+   separate questions, they are the rest of that one. The indent is what says so,
+   and it is done by padding the label rather than by narrowing it, so the
+   controls still line up with the row above. */
+.aw-cond-row--sub .aw-cond-label {
+  padding-left: 0.9rem;
+  font-weight: 500;
+}
+
+.aw-cond-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 150px;
+  flex-shrink: 0;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* A second label inside one row — "Stream Type […]  Stream Name […]". Sized to
+   its text rather than to the column, or the two halves of the row would sit a
+   screen apart. */
+.aw-cond-label--inline {
+  width: auto;
+  margin-left: 0.5rem;
+}
+
+.aw-cond-label--crit { color: var(--error-color); }
+.aw-cond-label--warn { color: #ffa726; }
+
+.aw-cond-help {
+  cursor: help;
+  opacity: 0.6;
+  font-size: 0.75rem;
+}
+
+/* ── Control widths ───────────────────────────────────────── */
+
+.aw-cond-op          { width: 78px; }
+.aw-cond-num         { width: 96px; font-variant-numeric: tabular-nums; }
+.aw-cond-agg         { width: 150px; }
+.aw-cond-stream-type { width: 120px; }
+.aw-cond-unit        { width: 108px; }
+.aw-cond-tz          { width: 150px; }
+.aw-cond-cron        { width: 160px; }
+
+/* The warning tier shares the critical operator rather than offering its own, so
+   it is PRINTED at the operator select's width instead of being a second,
+   disabled select. A greyed-out control invites the user to try to change it. */
+.aw-cond-op--static {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 78px;
+  height: 28px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Prose between controls — "avg [x] of [y]", "… on these [filters]". Quiet and
+   lower-case: it is grammar holding a row together, not a label. */
+.aw-cond-of,
+.aw-cond-onthese {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+/* Trailing prose finishing a row's sentence — "matching logs found". Cancels
+   .ae-hint's top margin so it stays on the controls' baseline. */
+.aw-cond-tail {
+  margin-top: 0;
+}
+
+.aw-cond-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--accent-color);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.aw-cond-add:hover { text-decoration: underline; }
+
+/* The Group by "+", which adds a control rather than naming an action. Square,
+   so it reads as a sibling of the × beside each row. */
+.aw-cond-add--icon {
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.aw-cond-add--icon:hover {
+  border-color: var(--accent-color);
+  text-decoration: none;
+}
+
+/* One group-by column and its remove button, kept together so a wrapped row
+   never separates a select from the × that deletes it. */
+.aw-cond-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 190px;
+}
+
+/* ── Notes and separators ─────────────────────────────────── */
+
+/* Indented to the control column, so a note reads as belonging to the row above
+   it rather than to the form as a whole. */
+.aw-cond-note {
+  margin: 0 0 0.35rem 150px;
+}
+
+.aw-cond-cron-note {
+  margin: -0.1rem 0 0.2rem 150px;
+  font-style: italic;
+}
+
+/* Says which stream list is on screen — the ones this service writes to, or
+   every stream in the tenant. The two are indistinguishable once the dropdown
+   is closed, so the distinction has to be stated here or not at all. */
+.aw-cond-scope {
+  margin: -0.15rem 0 0.35rem 150px;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+/* The unnarrowed case is a caveat, not a status line: whatever is picked from
+   that list has not been checked against the chosen service. */
+.aw-cond-scope.is-wide {
+  padding-left: 0.45rem;
+  border-left: 2px solid #ffa726;
+  color: #ffa726;
+}
+
+/* Marks where "which alert, over what" ends and "when does it fire" begins. The
+   two halves are answered in different units of thought, and the reference draws
+   the same line between them. */
+.aw-cond-rule {
+  height: 1px;
+  margin: 0.55rem 0 0.35rem;
+  background: var(--border-color);
+}
+
+.aw-cond-filters {
+  margin-top: 0.35rem;
+}
+
+/* Restates that step 1 wrote the service_name row, next to the row itself. */
+.aw-cond-seeded {
+  margin-top: 0.45rem;
+}
+
+.aw-cond-seeded code {
+  padding: 0 0.25rem;
+  border-radius: 3px;
+  background: var(--company-bg);
+  color: var(--text-primary);
+  font-size: 0.72rem;
+}
+
+/* ── Segmented controls (Alert Type, Builder | SQL) ────────────────── */
+
+.aw-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--company-bg);
+}
+
+/* Builder | SQL is a row of its own rather than a labelled one: it chooses how
+   the whole block below is expressed, so it sits above that block the way a tab
+   strip does. */
+.aw-seg--mode {
+  align-self: flex-start;
+  margin: 0.2rem 0 0.5rem;
+}
+
+.aw-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.aw-seg-btn:hover { color: var(--text-primary); }
+
+.aw-seg-btn.is-on {
+  background: var(--surface-color);
+  color: var(--accent-color);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.aw-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.aw-radio input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+/* ── The filters toggle, inline in the Check every row ──────────────── */
+
+.aw-filters-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.aw-filters-toggle:hover {
+  border-color: var(--accent-color);
+  color: var(--text-primary);
+}
+
+.aw-filters-toggle.is-open { color: var(--text-primary); }
+
+/* How many filters are set, shown on the control that hides them. A collapsed
+   block labelled only "filters" gives no clue whether the rule is scoped to
+   anything — which, on an alert, is the difference between watching one service
+   and paging on the whole stream. */
+.aw-filters-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.aw-filters-caret {
+  font-size: 0.7rem;
+  transition: transform 0.12s ease;
+}
+
+.aw-filters-toggle:not(.is-open) .aw-filters-caret {
+  transform: rotate(-90deg);
+}
+
+/* The value box's stand-in for a presence test, which compares against nothing.
+   Holds the column open so the × at the end of every condition row stays put as
+   the operator changes. */
+.cb-val--none {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+/* Narrow windows: the label column costs more than it is worth once the controls
+   beside it have nowhere to go, so rows stack and the indent that expressed the
+   Critical/Warning hierarchy is dropped rather than left indenting a full-width
+   label into nothing. */
+@media (max-width: 860px) {
+  .aw-cond-row {
+    flex-wrap: wrap;
+  }
+
+  .aw-cond-label {
+    width: 100%;
+  }
+
+  .aw-cond-label--inline {
+    margin-left: 0;
+  }
+
+  .aw-cond-row--sub .aw-cond-label {
+    padding-left: 0;
+  }
+
+  .aw-cond-note,
+  .aw-cond-cron-note,
+  .aw-cond-scope {
+    margin-left: 0;
+  }
+
+  /* Below this width the rail cannot sit beside the form, so it drops under it
+     and both take the full column. The preview and the summary are still worth
+     having there — they are just no longer worth a column of their own. */
+  .aw-body--split {
+    flex-direction: column;
+  }
+
+  .aw-ins {
+    width: auto;
+    max-height: none;
+  }
+}
+
+/* ── Step 2, in the screen's own palette ───────────────────────── */
+
+.alerts-shell .aw-cond-label { color: var(--set-ink); }
+.alerts-shell .aw-cond-label--crit { color: #ef5350; }
+.alerts-shell .aw-cond-label--warn { color: #ffa726; }
+
+.alerts-shell .aw-cond-of,
+.alerts-shell .aw-cond-onthese,
+.alerts-shell .aw-cond-op--static { color: var(--set-ink-faint); }
+
+.alerts-shell .aw-cond-rule { background: var(--set-line); }
+
+.alerts-shell .aw-cond-scope { color: var(--set-ink-faint); }
+.alerts-shell .aw-cond-scope.is-wide { color: #ffa726; }
+
+.alerts-shell .aw-cond-add { color: var(--set-accent); }
+
+.alerts-shell .aw-cond-add--icon {
+  border-radius: 0;
+  border-color: var(--set-line);
+}
+
+.alerts-shell .aw-cond-add--icon:hover { border-color: var(--set-accent); }
+
+.alerts-shell .aw-cond-seeded code {
+  border-radius: 0;
+  background: var(--set-panel);
+  color: var(--set-ink);
+}
+
+.alerts-shell .aw-seg {
+  border-radius: 0;
+  border-color: var(--set-line);
+  background: var(--set-panel);
+}
+
+.alerts-shell .aw-seg-btn {
+  border-radius: 0;
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .aw-seg-btn:hover { color: var(--set-ink); }
+
+/* Flat, not raised: this screen draws a selected thing with a fill and a colour,
+   and the drop shadow the default skin lifts the active pill with has no
+   counterpart anywhere else on it. */
+.alerts-shell .aw-seg-btn.is-on {
+  background: var(--set-badge);
+  color: var(--set-accent);
+  box-shadow: none;
+}
+
+.alerts-shell .aw-radio { color: var(--set-ink-dim); }
+.alerts-shell .aw-radio input { accent-color: var(--set-accent); }
+
+.alerts-shell .aw-filters-toggle {
+  border-radius: 0;
+  border-color: var(--set-line);
+  background: var(--set-panel);
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .aw-filters-toggle:hover {
+  border-color: var(--set-accent);
+  color: var(--set-ink);
+}
+
+.alerts-shell .aw-filters-toggle.is-open { color: var(--set-ink); }
+
+.alerts-shell .aw-filters-count {
+  border-radius: 0;
+  background: var(--set-accent);
+}
+
+.alerts-shell .cb-val--none { color: var(--set-ink-faint); }
+
+
+/* ==========================================================================
+   Step 2, Composite — sub-alerts and their boolean expression
+   ==========================================================================
+
+   A composite has no stream and no query, so this shares the label column and
+   the control skin with the rest of step 2 but almost nothing else: what it
+   needs instead is a list of rows that each carry an identity (the letter), a
+   choice (which alert) and a live state, plus one text box whose contents have
+   to stay readable while being edited.
+   ========================================================================== */
+
+.aw-comp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.3rem 0 0.15rem;
+}
+
+.aw-comp-title {
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* "2 of 10 children". The cap is a real constraint of the format, so it is
+   stated continuously rather than only when it is hit. */
+.aw-comp-count {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.aw-comp-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.2rem 0 0.4rem;
+}
+
+.aw-comp-empty {
+  padding: 0.7rem 0.8rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.aw-comp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.aw-comp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* The child's letter, which is what the expression refers to. Monospaced and
+   boxed because it is a TOKEN, not a bullet — it appears verbatim in the text
+   box below and the two have to look like the same thing. */
+.aw-comp-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--company-bg);
+  color: var(--accent-color);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+/* The child's own kind — scheduled / realtime. Quiet: it matters only when a
+   child turns out not to be eligible, and then the server says so plainly. */
+.aw-comp-tag {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  text-transform: lowercase;
+}
+
+/* The child's CURRENT state, which is the whole point of a composite. */
+.aw-comp-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.aw-comp-dot { font-size: 0.6rem; }
+
+.aw-comp-state.is-ok      { color: #66bb6a; }
+.aw-comp-state.is-warn    { color: #ffa726; }
+.aw-comp-state.is-bad     { color: #ef5350; }
+.aw-comp-state.is-unknown { color: var(--text-secondary); }
+
+/* ── The expression ─────────────────────────────────────────────────────── */
+
+/* The one place on this screen that explains what a composite IS. It earns the
+   space: "sub-alerts" and "trigger expression" describe the controls without
+   ever saying that nothing here reads telemetry. */
+.aw-comp-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0.15rem 0 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--accent-color);
+  border-radius: 4px;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.aw-comp-note svg { flex-shrink: 0; margin-top: 1px; }
+
+/* Monospaced, because it is an expression: proportional spacing makes nested
+   brackets nearly impossible to pair up by eye. */
+.aw-comp-expr {
+  width: 100%;
+  height: 34px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+.aw-comp-inserts {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin: 0.45rem 0 0.2rem;
+}
+
+.aw-comp-op {
+  min-width: 34px;
+  height: 24px;
+  padding: 0 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.aw-comp-op:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* ── The live verdict ───────────────────────────────────────────────────── */
+
+.aw-comp-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+  min-height: 22px;
+}
+
+.aw-comp-verdict {
+  padding: 0.12rem 0.45rem;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.aw-comp-verdict.is-ok  { color: #66bb6a; }
+.aw-comp-verdict.is-bad { color: #ef5350; }
+
+/* The per-child truth table. An expression over four alerts that evaluates to
+   false says nothing on its own; this says WHICH child is the reason. */
+.aw-comp-steps {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.aw-comp-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  font-size: 0.7rem;
+}
+
+.aw-comp-step b {
+  color: var(--accent-color);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.aw-comp-step code {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+
+.aw-comp-arrow { color: var(--text-secondary); }
+
+.aw-comp-warn { margin-top: 0; }
+
+.aw-comp-policy { width: 200px; }
+
+/* ── Composite, in the screen's own palette ─────────────────────── */
+
+.alerts-shell .aw-comp-title { color: var(--set-ink); }
+.alerts-shell .aw-comp-count { color: var(--set-ink-faint); }
+
+.alerts-shell .aw-comp-empty {
+  border-radius: 0;
+  border-color: var(--set-line);
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .aw-comp-letter {
+  border-radius: 0;
+  border-color: var(--set-line);
+  background: var(--set-panel);
+  color: var(--set-accent);
+}
+
+.alerts-shell .aw-comp-tag {
+  border-radius: 0;
+  border-color: var(--set-line);
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .aw-comp-state { border-radius: 0; }
+.alerts-shell .aw-comp-state.is-unknown { color: var(--set-ink-faint); }
+
+.alerts-shell .aw-comp-note {
+  border-radius: 0;
+  border-color: var(--set-line);
+  border-left-color: var(--set-accent);
+  background: var(--set-panel);
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .aw-comp-op {
+  border-radius: 0;
+  border-color: var(--set-line);
+  background: var(--set-panel);
+  color: var(--set-ink);
+}
+
+.alerts-shell .aw-comp-op:hover {
+  border-color: var(--set-accent);
+  color: var(--set-accent);
+}
+
+.alerts-shell .aw-comp-verdict { border-radius: 0; }
+.alerts-shell .aw-comp-step b { color: var(--set-accent); }
+.alerts-shell .aw-comp-step code,
+.alerts-shell .aw-comp-arrow { color: var(--set-ink-faint); }
+
+
+
+/* ── Shared by the footer's create button and every inline spinner ─────── */
+
+.aw-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.aw-spin { animation: aw-spin 0.8s linear infinite; }
+
+@keyframes aw-spin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* ==========================================================================
+   Step 2, rebuilt to the reference's own shape
+   --------------------------------------------------------------------------
+   The screen is now the whole alert: name and folder in the title strip, the
+   Alert Rules / Advanced tabs below the stream row, and a rail on the right
+   carrying the preview and the summary. Everything here is additive — the
+   `.aw-cond-*` rules above still lay out the rows inside the Conditions card,
+   unchanged, so the card that already matched the reference did not have to be
+   rewritten in order to be put inside another one.
+   ========================================================================== */
+
+/* ── The name, edited in place in the title strip ───────────────────────── */
+
+.aw-name-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--text-secondary);
+  cursor: text;
+}
+
+/* Borderless until it is touched, so it reads as the page's title rather than
+   as the first field of a form — which is the distinction the reference draws
+   by putting it here instead of in the card below. */
+.aw-name {
+  min-width: 0;
+  max-width: 34ch;
+  padding: 0.1rem 0.3rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.aw-name::placeholder {
+  color: var(--text-secondary);
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.aw-name:hover { border-color: var(--border-color); }
+
+.aw-name:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  background: var(--surface-color);
+}
+
+.aw-name.is-bad { border-color: var(--error-color); }
+
+.aw-name-error {
+  padding: 0 0.9rem 0.4rem 3rem;
+}
+
+.aw-subtitle--folder {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.aw-subtitle--folder .ssel--folder { min-width: 9rem; }
+
+/* ── Form on the left, preview + summary on the right ───────────────────── */
+
+.aw-body--split {
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+/* The rail is fixed-width and the form takes the rest: the summary lines are
+   short and a rail that grew with the window would leave a column of whitespace
+   beside them, while the condition rows genuinely use everything they get. */
+.aw-ins {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  width: 22rem;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.aw-ins-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+.aw-ins-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.aw-ins-title {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.aw-ins-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-height: 0;
+  padding: 0.6rem 0.7rem;
+  overflow-y: auto;
+}
+
+.aw-ins-running {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+}
+
+.aw-ins-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 1;
+  padding: 1.5rem 0.75rem;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  text-align: center;
+}
+
+.aw-ins-foot {
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+}
+
+.aw-ins-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.aw-ins-note--warn {
+  border: 1px solid #ffa72655;
+  background: #ffa7261a;
+  color: #000000;
+}
+
+.aw-ins-note code {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.aw-ins-verdict-text {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+/* ── The verdict, borrowed from the reference's own banner ──────────────── */
+
+.aw-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+}
+
+.aw-verdict.is-fire {
+  border: 1px solid #66bb6a66;
+  background: #66bb6a1f;
+  color: #000000;
+}
+
+.aw-verdict.is-quiet {
+  border: 1px solid var(--border-color);
+  background: var(--hover-bg);
+  color: var(--text-secondary);
+}
+
+.aw-verdict-detail {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+
+/* ── The condition ladder ───────────────────────────────────────────────── */
+
+.aw-ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aw-ladder-step {
+  display: grid;
+  grid-template-columns: 1fr 3.5rem auto;
+  align-items: center;
+  gap: 0.35rem 0.4rem;
+  padding: 0.25rem 0.35rem;
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+}
+
+/* The rung where the set collapsed. Marked rather than left to be worked out by
+   subtracting adjacent rows — it is the answer the panel exists to give. */
+.aw-ladder-step.is-culprit {
+  border: 1px solid #ffa72655;
+  background: #ffa7261a;
+}
+
+.aw-ladder-label {
+  overflow: hidden;
+  grid-column: 1 / -1;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aw-ladder-plus {
+  margin-right: 0.25rem;
+  color: var(--accent-color);
+  font-weight: 700;
+}
+
+.aw-ladder-bar {
+  overflow: hidden;
+  grid-column: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--hover-bg);
+}
+
+.aw-ladder-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent-color);
+}
+
+.aw-ladder-count {
+  grid-column: 2;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-align: right;
+}
+
+.aw-ladder-removed {
+  grid-column: 3;
+  color: #ef5350;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+
+.aw-ladder-err,
+.aw-ladder-partial {
+  grid-column: 3;
+  color: #ffa726;
+  font-family: var(--font-sans);
+  font-size: 0.64rem;
+}
+
+/* ── Per-group results ──────────────────────────────────────────────────── */
+
+.aw-ins-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.aw-ins-subhead {
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.aw-ins-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+
+.aw-ins-group.is-breaching {
+  background: #ef53501a;
+  color: #000000;
+}
+
+.aw-ins-group-key {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── The summary lines ──────────────────────────────────────────────────── */
+
+.aw-sum {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.aw-sum-headline {
+  margin: 0 0 0.35rem;
+  padding: 0.45rem 0.55rem;
+  border-left: 3px solid var(--accent-color);
+  border-radius: 0 4px 4px 0;
+  background: var(--hover-bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.aw-sum-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+}
+
+.aw-sum-tick {
+  color: #66bb6a;
+  font-size: 0.7rem;
+}
+
+.aw-sum-line.is-warn .aw-sum-tick { color: #ffa726; }
+
+.aw-sum-term {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.aw-sum-val {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.aw-sum-chip {
+  overflow: hidden;
+  max-width: 24ch;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  background: var(--hover-bg);
+  color: var(--accent-color);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aw-sum-chip.is-mono {
+  max-width: 100%;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+
+.aw-sum-chip.is-warn { color: #ffa726; }
+
+.aw-sum-plain,
+.aw-sum-dash {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+/* ── Alert Rules | Advanced ─────────────────────────────────────────────── */
+
+.aw-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  margin-top: 0.5rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--company-bg);
+}
+
+.aw-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+
+.aw-tab:hover { color: var(--text-primary); }
+
+.aw-tab.is-on {
+  background: var(--surface-color);
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+/* The count of errors on a tab that may not be on screen. Without it, pressing
+   Create refuses with a complaint about a control the user cannot see — which
+   is the one regression removing step 3 could have introduced. */
+.aw-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--error-color);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.aw-tabpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 1;
+  min-height: 0;
+  padding-top: 0.6rem;
+}
+
+/* ── Conditions / Settings / Additional Settings cards ──────────────────── */
+
+.aw-card {
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+.aw-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* The accent bar the reference puts before each card title. */
+.aw-card-bar {
+  width: 3px;
+  height: 0.9rem;
+  border-radius: 999px;
+  background: var(--accent-color);
+}
+
+.aw-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.7rem;
+}
+
+/* ── Settings rows ──────────────────────────────────────────────────────── */
+
+/* Number and unit read as one control, the way the reference draws them — the
+   unit is not a separate answer when it cannot be changed. */
+.aw-unit-group {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.aw-unit-group .ae-input {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.aw-unit {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  border-left: 1px solid var(--border-color);
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+}
+
+.aw-cond-row--bare {
+  margin: 0;
+  padding: 0;
+}
+
+.aw-cond-dest-add { white-space: nowrap; }
+
+/* ── Advanced tab ───────────────────────────────────────────────────────── */
+
+.aw-adv-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0;
+}
+
+.aw-adv-block + .aw-adv-block { border-top: 1px solid var(--border-color); }
+
+.aw-adv-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.aw-adv-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.aw-adv-hint {
+  margin: 0;
+  font-size: 0.7rem;
+}
+
+.aw-adv-select { min-width: 16rem; }
+.aw-adv-select--narrow { min-width: 8rem; }
+
+.aw-adv-textarea {
+  min-height: 4.5rem;
+  padding: 0.4rem 0.5rem;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.aw-adv-tpltype {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.aw-adv-tpltype-label {
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+}
+
+.aw-seg--mini .aw-seg-btn {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.68rem;
+}
+
+/* ── The same blocks in the Settings screen's own palette ───────────────── */
+
+.alerts-shell .aw-ins-card,
+.alerts-shell .aw-card {
+  border-radius: 0;
+  border-color: var(--set-line);
+  background: var(--set-row);
+}
+
+.alerts-shell .aw-ins-head,
+.alerts-shell .aw-card-head,
+.alerts-shell .aw-tabs {
+  border-color: var(--set-line);
+}
+
+.alerts-shell .aw-tabs { background: var(--set-panel); }
+.alerts-shell .aw-tab.is-on { background: var(--set-row); }
+
+.alerts-shell .aw-ins-title,
+.alerts-shell .aw-card-head,
+.alerts-shell .aw-adv-label,
+.alerts-shell .aw-sum-headline {
+  color: var(--set-ink);
+}
+
+.alerts-shell .aw-name { color: var(--set-ink); }
+
+.alerts-shell .aw-unit-group { border-color: var(--set-line); }
+
+.alerts-shell .aw-unit {
+  border-color: var(--set-line);
+  background: var(--set-panel);
+}

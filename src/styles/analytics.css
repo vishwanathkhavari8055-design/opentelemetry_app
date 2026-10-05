@@ -1,0 +1,466 @@
+/* ===========================================================================
+   Analytics Dashboard — log volume drilled through the Product Catalog.
+
+   FULL SCREEN by construction: the view is a flex column that owns the whole
+   content area, and only the table BODY scrolls. That keeps the scope totals, the
+   column headers and the drill breadcrumb permanently visible, which is the point
+   of a counts dashboard — the numbers you are comparing against must not scroll
+   away from the rows you are comparing.
+   =========================================================================== */
+
+/* ── Severity palette ─────────────────────────────────────────────────────────
+   Aliases onto the --sev-* scale in index.css rather than carrying literals.
+
+   These names stay because BOTH Analytics faces colour the same five buckets and
+   the flip exists so the two can be compared — a hard-coded #ef5350 in the table
+   and a #e53935 on the board is how "the same error count" stops looking like the
+   same number. But the buckets are not only compared ACROSS the flip: an operator
+   reads an error count here, clicks it, and lands on the logs list. If Analytics
+   red and logs red are different reds, that drill silently looks like a different
+   dataset. So the literals moved up to :root and every severity surface in the app
+   now reads the same seven values. The Category Board's stacked bars read these
+   too, via the same aliases. */
+
+:host,
+:root {
+  --an-info: var(--sev-info);
+  --an-warn: var(--sev-warn);
+  --an-error: var(--sev-error);
+  --an-debug: var(--sev-debug);
+  --an-other: var(--sev-other);
+}
+
+.an-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.an-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.an-head-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.an-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.an-head-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.an-select {
+  min-width: 150px;
+}
+
+.an-select--narrow {
+  min-width: 78px;
+}
+
+.an-refresh {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.an-refresh-label {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+/* ── Breadcrumb ──────────────────────────────────────────────────────────── */
+/* The drill path is the only navigation state this screen has, so it is also the
+   way back out. Every ancestor stays clickable. */
+
+.an-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.an-crumb {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-color);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.an-crumb:hover {
+  text-decoration: underline;
+}
+
+/* The current level is not a link: offering to navigate to where you already are
+   is the kind of dead control that makes a breadcrumb untrustworthy. */
+.an-crumb.is-current {
+  color: var(--text-secondary);
+  cursor: default;
+  pointer-events: none;
+}
+
+.an-crumb-sep {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+/* ── The step-by-step pickers ─────────────────────────────────────────────────
+   Category → Product → Microservice, on one row so the whole path is readable at a
+   glance. They wrap rather than scroll: the product labels are long, and a
+   horizontally scrolling control row hides the step you have not answered yet. */
+
+.an-steps {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+.an-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  /* Each step gets room to grow but never shrinks below something readable — a
+     product label truncated to "trinityIoT - IoT…" cannot be chosen between. */
+  flex: 1 1 220px;
+}
+
+.an-step-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* The step number. The three only make sense in order — the second cannot be
+   answered before the first — and the numeral says so without a sentence. */
+.an-step-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  color: var(--company-bg);
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.an-step.is-disabled .an-step-n {
+  background: var(--border-color);
+  color: var(--text-secondary);
+}
+
+.an-step.is-disabled .an-step-label {
+  opacity: 0.65;
+}
+
+.an-step-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.an-steps-clear {
+  flex: 0 0 auto;
+}
+
+/* ── Scope totals ────────────────────────────────────────────────────────── */
+
+.an-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+
+.an-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+.an-stat-label {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.an-stat-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* Every tile is identified by its left edge, which keeps the row of tiles scannable
+   without six competing text colours. */
+.an-stat--warn  { box-shadow: inset 3px 0 0 var(--an-warn); }
+.an-stat--error { box-shadow: inset 3px 0 0 var(--an-error); }
+.an-stat--info  { box-shadow: inset 3px 0 0 var(--an-info); }
+.an-stat--debug { box-shadow: inset 3px 0 0 var(--an-debug); }
+.an-stat--total { box-shadow: inset 3px 0 0 var(--accent-color); }
+.an-stat--other .an-stat-value { color: var(--text-secondary); }
+
+/* Warn and Error additionally colour the FIGURE, and they are the only two that do.
+   The edge alone was a reasonable call while the tiles were read as a set, but these
+   two are not read as part of a set — they are the ones somebody scans for, and the
+   table below already prints its Error column in red. A headline error count in plain
+   white above a red column of the same number reads as two different measurements.
+
+   Info, Debug and Total stay neutral for the same reason Info is uncoloured in the
+   table: colour that lands on the majority of every screen stops marking anything. */
+.an-stat--warn .an-stat-value  { color: var(--an-warn); }
+.an-stat--error .an-stat-value { color: var(--an-error); }
+
+/* Three classes deep on purpose, so it outranks the two-class tone rules above
+   whatever order they end up in. A zero has nothing to report and must not be
+   coloured; the tile keeps its edge, which is what identifies it. */
+.an-stat.is-quiet .an-stat-value { color: var(--text-primary); }
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+
+.an-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  overflow: hidden;
+}
+
+.an-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.an-row {
+  display: grid;
+  /* The name takes the space; the six count columns are a fixed width because a
+     number column that resizes between drill levels makes the values impossible
+     to compare by eye. */
+  grid-template-columns: minmax(240px, 3fr) repeat(6, minmax(84px, 0.6fr));
+  align-items: center;
+  column-gap: 0.75rem;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.78rem;
+}
+
+.an-row--head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.an-row > span,
+.an-row > button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.an-row.is-drillable {
+  cursor: pointer;
+}
+
+.an-body .an-row.is-drillable:hover {
+  background: var(--hover-bg);
+}
+
+.an-body .an-row.is-drillable:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: -2px;
+}
+
+.an-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.an-label-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.an-caret {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+/* "(2)" — how many products a category holds, or microservices a product holds.
+   It says what the click will open, so it belongs beside the name. */
+.an-childcount {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+/* Tabular figures and right alignment: this table exists to be compared down a
+   column, which proportional digits make impossible. */
+.an-num {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.an-num.is-strong  { font-weight: 700; }
+.an-num.is-dim     { color: var(--text-secondary); }
+.an-num--warn      { color: var(--an-warn); }
+.an-num--error     { color: var(--an-error); }
+.an-num--debug     { color: var(--an-debug); }
+
+/* ── Counts that open the logs behind them ───────────────────────────────────
+   A count is a button when clicking it can show the lines it counted. Shared by
+   both Analytics faces: .acb-num carries the same class and the same rules, so a
+   clicked number behaves identically whichever side of the flip it is on.
+
+   Styled to look EXACTLY like the number it replaces until pointed at. Six link-
+   coloured cells per row would make the table unreadable and would compete with
+   the severity colours, which carry meaning; the underline on hover is enough to
+   make the affordance findable, and the tooltip states it outright. The colour is
+   deliberately left alone on hover too — an error count that stopped being red
+   when you reached for it would be losing information at the worst moment. */
+
+/* NOT `font: inherit`. The shorthand would reset font-family and undo the mono
+   face .an-num sets one rule up, which is what keeps a column of digits aligned.
+   font-size and line-height DO need naming: the UA stylesheet sets them explicitly
+   on buttons, so unlike font-family they do not inherit from the row. font-weight
+   is left alone so .an-num.is-strong still wins on the Total column.
+
+   `color` is deliberately NOT reset here. It used to be `color: inherit`, to undo
+   the UA stylesheet's buttontext — but `.an-num.is-link` is two classes and the
+   severity rules above are one, so that declaration outranked every one of them
+   and quietly repainted the tone cells back to plain text. The visible symptom was
+   an Error column that was red on some rows and not others: red exactly where the
+   count was NOT drillable, colourless everywhere it was. Same for .is-dim.
+
+   Nothing needs to replace it. `.an-num` / `.acb-num` already set an author-level
+   colour on this same element, which beats the UA button style on its own. */
+.an-num.is-link,
+.acb-num.is-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: inherit;
+  line-height: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  cursor: pointer;
+}
+
+.an-num.is-link:hover,
+.acb-num.is-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.an-num.is-link:focus-visible,
+.acb-num.is-link:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+.an-sort {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.an-sort.an-num {
+  justify-content: flex-end;
+}
+
+.an-sort-caret {
+  opacity: 0.7;
+}
+
+.an-row--skeleton {
+  pointer-events: none;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+/* The reconciliation note lives on screen rather than in a tooltip: a table whose
+   columns appear not to add up reads as broken, and the explanation has to be
+   where the doubt is. */
+
+.an-foot {
+  display: flex;
+  align-items: center;
+  /* flex-end, not space-between: the note that used to sit opposite the
+     window range is gone, and space-between would slide the range left. */
+  justify-content: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.an-foot-range {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}

@@ -1,0 +1,2041 @@
+/* ==========================================================================
+   Alerts section, drawn to the SETTINGS spec.
+
+   Settings (styles/iam.css) is the one screen in this app measured off a
+   wireframe: a #262626 page, an 11px #404040 frame that is the only thing
+   separating card from page, 35px row bands with 8px of page colour between
+   them, Open Sans, teal #009688, and every edge square. This file brings the
+   Alerts section onto that same spec.
+
+   ── Why a separate file, and why every selector is prefixed ──────────────
+
+   Alerts does not own its markup outright. `.alerts-btn-primary`,
+   `.alerts-btn-ghost`, `.alerts-banner*`, `.alerts-modal-*`, `.ae-input`,
+   `.ae-select`, `.iam-search`, `.iam-foot*`, `.iam-pager`, `.iam-switch-btn`,
+   `.iam-state`, `.tv-tab*`, `.tb-switch` and `.results-bar-btn` are all shared
+   with Settings, Product Catalog, Dashboards, Analytics, Logs and Traces.
+   Restyling any of them in place would repaint those screens.
+
+   So NOTHING here touches a base rule. Every selector is scoped under
+   `.alerts-shell` — the root AlertsShell renders, and the only place it renders
+   — exactly the way iam.css scopes its own overrides under `.iam-view`. The
+   dialogs and drawers this section opens are children of that root (they are
+   position:fixed, not portalled), so they are reached too.
+
+   Imported LAST in index.css: it has to win over alerts.css,
+   alerts-enterprise.css, catalog.css and traces-oo.css on equal specificity.
+
+   ── Every edge is square ─────────────────────────────────────────────────
+
+   Each rule states `border-radius: 0` outright rather than relying on a
+   blanket `.alerts-shell *`. Same reason iam.css gives: that selector is only
+   (0,1,0) specific, so any single-class rule in a later stylesheet wins and
+   the radius silently comes back.
+   ========================================================================== */
+
+/* ── Palette ──────────────────────────────────────────────────────────────── */
+
+/*
+   The same tokens iam.css declares on `.iam-view`, declared here on the screen
+   root for the same reason: on :root they would repaint Logs, Traces, Metrics
+   and Settings along with this screen.
+*/
+.alerts-shell {
+  --set-bg: #262626;
+  --set-panel: #262626;
+  --set-line: #404040;
+  --set-row: #313131;
+  --set-row-hover: #3b3b3b;
+  --set-accent: #009688;
+  --set-accent-hi: #00aba2;
+  --set-ink: #ffffff;
+  /* Fill behind a badge's 2px accent edge. */
+  --set-badge: #27453d;
+  /* The rule under a card title. Lighter than --set-line, which all but
+     disappears when drawn on the card rather than against the page. */
+  --set-rule: #5a5a5a;
+  /* Two insets that have to stay in step. The row band is inset this far from
+     the card's inner edge; the cell text is inset this far again from the band.
+     Column headings sit OUTSIDE the band, so their padding is the sum — which
+     is what keeps each heading over its column. */
+  --set-band-inset: 13px;
+  --set-cell-pad: 1.35rem;
+  /* One step dimmer than the ink, for timestamps and secondary lines. */
+  --set-ink-dim: #d0d0d0;
+  /* Empty states and hints. */
+  --set-ink-faint: #9a9a9a;
+
+  /* Open Sans throughout, done by REDEFINING the token rather than writing the
+     family on each rule: custom properties inherit, so every descendant that
+     already reads `var(--font-sans)` resolves to Open Sans here and to the app
+     default everywhere else.
+
+     `--font-mono` is deliberately NOT redirected, which is where this screen
+     departs from Settings. Settings points mono at Open Sans because the only
+     mono text there is two identifier columns. Alerts has First Seen, Last
+     Seen, Current Usage and the look-back / cadence columns — numeric columns
+     read as columns only while the digits stay fixed-width. */
+  --font-sans: 'Open Sans', sans-serif;
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--set-bg);
+  color: var(--set-ink);
+  /* body set the app font on `--font-sans`, but resolved that token against
+     :root — the override above only reaches this subtree once something here
+     re-reads it. */
+  font-family: var(--font-sans);
+}
+
+/* Form controls do not inherit `font-family` from their ancestors; left alone
+   they take the UA's own (Arial, on Windows). Declared once for the subtree so
+   a control added to this screen later is in Open Sans without knowing why. */
+.alerts-shell input,
+.alerts-shell select,
+.alerts-shell textarea,
+.alerts-shell button {
+  font-family: inherit;
+}
+
+/* ── Screen title bar ─────────────────────────────────────────────────────── */
+
+/*
+   Mirrors `.iam-topbar`. Alerts and Settings are the two screens with no
+   SectionNav column, so they are the two that carry their own title.
+
+   TIGHTER THAN THE SETTINGS BAR, on purpose. Settings stacks title → tabs →
+   panel, and this screen stacks title → tabs → panel → the panel's OWN card
+   title, which is one band more of chrome above a table that is the reason the
+   screen exists. 0.55rem/1.05rem takes ~18px back out of that stack; the
+   Settings figures (0.95rem/1.2rem) are left alone, since that screen does not
+   pay the extra band.
+*/
+.alerts-topbar {
+  flex-shrink: 0;
+  padding: 0.55rem 1.15rem;
+  border-bottom: 1px solid var(--set-line);
+  background: var(--set-panel);
+}
+
+.alerts-topbar-title {
+  margin: 0;
+  color: var(--set-ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+/* The box the tab strip and the panel share. Draws nothing itself — the visible
+   frame belongs to `.alerts-shell-panel` — so all it contributes is the 12px the
+   whole assembly is inset from the content area. */
+.alerts-sh-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0 12px 12px;
+  box-sizing: border-box;
+}
+
+/* ── Tab strip: Rules / Alerts ────────────────────────────────────────────── */
+
+/*
+   Was an underlined text strip; now the Settings segmented strip.
+
+   align-items:flex-start with a 39px band and 37px tabs is what distinguishes
+   the selected tab: every tab shares one top edge, and only the active one is
+   tall enough to reach the frame below, so the inactive tabs keep a 2px seam of
+   page colour under them and the active one merges into the frame. That seam IS
+   the selected state — the fills are identical.
+
+   NO `gap`: the tabs abut, and the hairline between two of them is drawn INSIDE
+   the right-hand tab as an inset shadow (below). A gap would be a 2px channel of
+   page colour, which reads as detached buttons rather than one strip.
+*/
+.alerts-shell .alerts-shell-tabs {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  flex-shrink: 0;
+  height: 39px;
+  margin: 19px 0 0;
+  padding: 0;
+  border-bottom: none;
+  background: transparent;
+}
+
+/* Shrinkable FROM 214px rather than fixed AT it; `min-width: 0` is the part that
+   actually permits the shrink, since a flex item will not go below its content
+   width without it. */
+.alerts-shell .alerts-shell-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  flex: 0 1 214px;
+  min-width: 0;
+  height: 37px;
+  padding: 0 1.1rem;
+  margin-bottom: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-size: 0.8rem;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 120ms ease;
+}
+
+/* The seam between two adjacent tabs. An inset shadow rather than a
+   border-left, so the divider costs the tab no layout — a border would eat 1px
+   out of every tab's box and drag the strip off the 214px grid. */
+.alerts-shell .alerts-shell-tab + .alerts-shell-tab {
+  box-shadow: inset 1px 0 0 var(--set-bg);
+}
+
+.alerts-shell .alerts-shell-tab:hover:not(.alerts-shell-tab--active) {
+  background: #4d4d4d;
+  color: var(--set-ink);
+}
+
+/* Two pixels taller, and that is the whole difference in the fill. */
+.alerts-shell .alerts-shell-tab--active {
+  height: 39px;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-weight: 700;
+}
+
+/* Squared, and no longer pulsing: the strip is now a solid band, and a throbbing
+   pill on it reads as a rendering fault rather than as urgency. The count itself
+   is the signal, and the table below is where the urgency belongs. */
+.alerts-shell .alerts-shell-badge {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 0;
+  background: #d32f2f;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  animation: none;
+}
+
+/* ── The panel ────────────────────────────────────────────────────────────── */
+
+/*
+   Its 11px #404040 border IS the frame around the card: #262626 both inside it
+   and outside, so the frame is the only thing separating card from page. Drawn
+   as a border rather than as padding on a wrapper, which keeps it on the element
+   that owns the card's fill.
+
+   NO top margin — a 1px line of page colour under the strip would run under the
+   ACTIVE tab too, so the tab would never reach the frame and the selected state
+   would lose the very thing that signals it.
+*/
+.alerts-shell .alerts-shell-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  border: 11px solid var(--set-line);
+  border-radius: 0;
+  background-color: var(--set-panel);
+  box-sizing: border-box;
+  /* Deliberately NOT an overflow container, matching `.iam-main`. Every child
+     that scrolls owns its own scroller, and the filter dropdowns and row menus
+     inside are absolutely positioned — clipping here would cut them off at the
+     frame instead of letting them overhang it. */
+}
+
+/* MUST come after the rule above. `.alerts-shell-panel[hidden]` in alerts.css is
+   only (0,1,1) specific and would lose to the (0,2,0) selector above, which would
+   un-hide the inactive panel and stack Rules on top of Alerts. */
+.alerts-shell .alerts-shell-panel[hidden] {
+  display: none;
+}
+
+/* ── Shared card chrome ───────────────────────────────────────────────────── */
+
+/*
+   `.alerts-head` is the card title bar on both tabs. The rule under the title
+   stops short of the card's edge on both sides, so it is a pseudo-element rather
+   than a border — a border-bottom always spans the full padding box. It is inset
+   to the same place the row bands start.
+*/
+.alerts-shell .alerts-head,
+.alerts-shell .alerts-rail-head {
+  position: relative;
+  padding: 0.9rem var(--set-band-inset);
+  border-bottom: none;
+  background: transparent;
+}
+
+.alerts-shell .alerts-head::after,
+.alerts-shell .alerts-rail-head::after {
+  content: '';
+  position: absolute;
+  right: var(--set-band-inset);
+  bottom: 0;
+  left: var(--set-band-inset);
+  height: 1px;
+  background: var(--set-rule);
+}
+
+/* Card titles, at the Settings weight and size — not the 1.4rem page heading
+   this used to be. The screen title now lives in `.alerts-topbar`, so these are
+   section titles inside a card. */
+.alerts-shell .alerts-title,
+.alerts-shell .alerts-rail-title {
+  margin: 0;
+  color: var(--set-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* ── Header controls ──────────────────────────────────────────────────────── */
+
+/* #404040, the same fill as the tabs rather than the lighter row-band tone, so
+   the header's inputs all read as one family. */
+.alerts-shell .iam-search {
+  gap: 0.45rem;
+  width: 200px;
+  height: 28px;
+  padding: 0 0.55rem;
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: #a8a8a8;
+}
+
+.alerts-shell .iam-search:focus-within {
+  border-color: var(--set-accent);
+}
+
+.alerts-shell .iam-search input {
+  color: var(--set-ink);
+  font-size: 0.78rem;
+}
+
+.alerts-shell .iam-search input::placeholder {
+  color: var(--set-ink-faint);
+}
+
+/* The refresh / pause squares. Scoped so the identical button in the Logs
+   results bar keeps its own outline style. */
+.alerts-shell .results-bar-btn {
+  min-width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: var(--set-accent);
+  color: #fff;
+}
+
+.alerts-shell .results-bar-btn:hover:not(:disabled),
+.alerts-shell .results-bar-btn.is-active {
+  border-color: transparent;
+  background: var(--set-accent-hi);
+  color: #fff;
+}
+
+/* Primary: the only filled accent button on the screen. */
+.alerts-shell .alerts-btn-primary {
+  height: 28px;
+  border-color: var(--set-accent);
+  border-radius: 0;
+  background: var(--set-accent);
+  color: #fff;
+  font-size: 0.78rem;
+}
+
+.alerts-shell .alerts-btn-primary:hover:not(:disabled) {
+  background: var(--set-accent-hi);
+  filter: none;
+}
+
+/* Secondary: the tab fill, matching `.iam-export`. Grey rather than a second
+   teal, so "New alert" stays unambiguous beside "Import". */
+.alerts-shell .alerts-btn-ghost {
+  height: 28px;
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-size: 0.78rem;
+}
+
+.alerts-shell .alerts-btn-ghost:hover:not(:disabled) {
+  border-color: var(--set-line);
+  background: #4d4d4d;
+  color: var(--set-ink);
+}
+
+/* "Clear filters" sits on the toolbar's meta row among 0.72rem text, not among
+   the 28px controls, and `.alerts-clear2` is (0,1,0) — outranked by the height
+   above. */
+.alerts-shell .alerts-clear2 {
+  height: 24px;
+  font-size: 0.7rem;
+}
+
+/* Form controls, wherever they appear on this screen — the filter selects, the
+   editor's inputs, the dialogs. Same treatment iam.css gives `.ae-select`. */
+.alerts-shell .ae-input,
+.alerts-shell .ae-select,
+.alerts-shell .iam-foot-size select {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+}
+
+/* Records per page. 24px so it sits inside the 26px pagers beside it rather than
+   being the tallest thing in a footer that is being kept short. */
+.alerts-shell .iam-foot-size select {
+  height: 24px;
+  font-size: 0.74rem;
+}
+
+.alerts-shell .ae-input::placeholder {
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .ae-input:focus,
+.alerts-shell .ae-select:focus {
+  border-color: var(--set-accent);
+  outline: 1px solid var(--set-accent);
+  outline-offset: -1px;
+}
+
+/* The All Folders / pause toggles and the five toggles in the alert editor.
+   `.tb-switch` is the Logs toolbar's switch, so its own rules are left alone and
+   everything below is scoped to this screen.
+
+   The base switch is a 30x16 track with no cursor, no focus ring, no disabled
+   treatment and no pending state. On the Alert Rules table that is not enough:
+   the On column's switch is BOTH the control that enables a rule and the only
+   readout of whether it is enabled, it is keyboard-reachable, it is disabled for
+   a viewer without the configure grant, and each flip is a round trip to
+   OpenObserve followed by a refetch. So it needs to say, distinctly: on, off,
+   focused, not-yours, and in-flight. */
+.alerts-shell .tb-switch {
+  height: 28px;
+  border-radius: 0;
+  color: var(--set-ink);
+  font-size: 0.72rem;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: background 140ms ease, opacity 140ms ease;
+}
+
+.alerts-shell .tb-switch:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.alerts-shell .tb-switch.is-on {
+  color: var(--set-ink);
+}
+
+/* Square, like every other focus ring on this screen, and drawn with outline so
+   it never shifts the row's layout. Focus-visible only: a mouse click on a
+   switch should not leave a ring behind it. */
+.alerts-shell .tb-switch:focus-visible {
+  outline: 2px solid var(--set-accent-hi);
+  outline-offset: 1px;
+}
+
+/* Not-yours. Kept visible rather than hidden — see the comment at the call site
+   in AlertsView: this cell is the enabled readout too, so a read-only viewer
+   still has to be able to read it. */
+.alerts-shell .tb-switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* One step larger than the base 30x16 so the state is legible at a glance down
+   a column of rows, and inset-bordered so OFF still reads as a control on the
+   #313131 row band rather than as a dark gap. */
+.alerts-shell .tb-switch .tb-switch-track {
+  width: 34px;
+  height: 18px;
+  border-radius: 999px;
+  background: #1a1a1a;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.alerts-shell .tb-switch.is-on .tb-switch-track {
+  background: var(--set-accent);
+  box-shadow: inset 0 0 0 1px var(--set-accent-hi);
+}
+
+.alerts-shell .tb-switch:hover:not(:disabled) .tb-switch-track {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.alerts-shell .tb-switch.is-on:hover:not(:disabled) .tb-switch-track {
+  background: var(--set-accent-hi);
+}
+
+.alerts-shell .tb-switch .tb-switch-thumb {
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  transition: transform 160ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.alerts-shell .tb-switch.is-on .tb-switch-thumb {
+  transform: translateX(16px);
+}
+
+/* Press feedback. The thumb is 14px inside an 18px track, so there is no room
+   to grow it — squash it toward the direction of travel instead. */
+.alerts-shell .tb-switch:active:not(:disabled) .tb-switch-thumb {
+  transform: scale(0.86);
+}
+
+.alerts-shell .tb-switch.is-on:active:not(:disabled) .tb-switch-thumb {
+  transform: translateX(16px) scale(0.86);
+}
+
+/* In flight. The switch is already disabled while the write runs (the row is in
+   `busyIds`), which without this looks identical to "you may not touch this".
+   The pulse is what separates the two, and it sits on the track rather than
+   replacing the thumb so the position still reports the state being left. */
+.alerts-shell .tb-switch.is-busy {
+  cursor: progress;
+  opacity: 1;
+}
+
+.alerts-shell .tb-switch.is-busy .tb-switch-track {
+  animation: alerts-switch-pulse 900ms ease-in-out infinite;
+}
+
+@keyframes alerts-switch-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); }
+  50% { box-shadow: inset 0 0 0 1px var(--set-accent-hi),
+                    0 0 0 3px rgba(0, 150, 136, 0.28); }
+}
+
+/* Honour a reduced-motion preference: the pulse becomes a steady accent ring,
+   which still distinguishes in-flight from not-yours without animating. */
+@media (prefers-reduced-motion: reduce) {
+  .alerts-shell .tb-switch .tb-switch-track,
+  .alerts-shell .tb-switch .tb-switch-thumb {
+    transition: none;
+  }
+
+  .alerts-shell .tb-switch.is-busy .tb-switch-track {
+    animation: none;
+    box-shadow: inset 0 0 0 1px var(--set-accent-hi),
+                0 0 0 3px rgba(0, 150, 136, 0.28);
+  }
+}
+
+/* The All / Scheduled / Real time strip. Scoped so the identical strip on Traces
+   keeps its rounded pills. */
+.alerts-shell .tv-tabs {
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+}
+
+.alerts-shell .tv-tab {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 0.9rem;
+  border-radius: 0;
+  color: var(--set-ink);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.alerts-shell .tv-tab:hover:not(.is-active) {
+  background: #4d4d4d;
+  color: var(--set-ink);
+}
+
+.alerts-shell .tv-tab.is-active {
+  background: var(--set-accent);
+  color: #fff;
+}
+
+/* ── Banners ──────────────────────────────────────────────────────────────── */
+
+/* Inset to the band, like the catalog's banners inside the Settings panel: a
+   full-bleed bar would cross the card's own inset and read as a strip laid over
+   the panel rather than as part of it. */
+.alerts-shell .alerts-banner {
+  flex-shrink: 0;
+  margin: 0.55rem var(--set-band-inset) 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid transparent;
+  border-left-width: 3px;
+  border-radius: 0;
+}
+
+.alerts-shell .alerts-banner--error {
+  border-color: #d32f2f;
+  background: rgba(211, 47, 47, 0.12);
+  color: #ffffff;
+}
+
+.alerts-shell .alerts-banner--ok {
+  border-color: #388e3c;
+  background: rgba(56, 142, 60, 0.14);
+  color: #000000;
+}
+
+.alerts-shell .alerts-banner--warn {
+  border-color: #f5a623;
+  background: rgba(245, 166, 35, 0.14);
+  color: #000000;
+}
+
+/* ── Empty / loading / error bodies ───────────────────────────────────────── */
+
+.alerts-shell .alerts-state,
+.alerts-shell .iam-state {
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .alerts-state-error,
+.alerts-shell .iam-state-error {
+  color: #ef5350;
+}
+
+/* ── Footer / pager ───────────────────────────────────────────────────────── */
+
+/*
+   No rule above the footer, unlike the shared version: the panel already ends in
+   an 11px frame, and the pager floats in open space on this spec.
+
+   TIGHTER THAN THE SETTINGS FOOTER. Its height was the 28px pagers plus ~20px of
+   padding; on a screen whose job is the table, ~48px of chrome under it to say
+   "Showing 1 - 50 of 456" is worth trimming. 0.3rem of padding against 26px
+   controls brings it to ~36px. Settings keeps its own figures — the `--set-*`
+   pager spec is only narrowed here, inside `.alerts-shell`.
+*/
+.alerts-shell .iam-foot {
+  padding: 0.3rem 0.9rem;
+  border-top: none;
+  color: #c4c4c4;
+  font-size: 0.74rem;
+}
+
+.alerts-shell .iam-foot-total,
+.alerts-shell .iam-foot-range strong {
+  color: var(--set-ink);
+}
+
+/* #404040 squares with white glyphs and the accent on the current page. 26px
+   rather than the Settings spec's 28px: these are what set the footer's height,
+   and the two px come off the band above. */
+.alerts-shell .iam-pager {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-size: 0.74rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.alerts-shell .iam-pager:hover:not(:disabled) {
+  border-color: transparent;
+  background: #4d4d4d;
+  color: var(--set-ink);
+}
+
+.alerts-shell .iam-pager:disabled {
+  opacity: 0.35;
+}
+
+.alerts-shell .iam-pager.is-current,
+.alerts-shell .iam-pager.is-current:hover {
+  border-color: transparent;
+  background: var(--set-accent);
+  color: #fff;
+}
+
+/* Bare glyph row action — the pencil/play/bin trio, and `.iam-icon-btn`'s twin. */
+.alerts-shell .alerts-action,
+.alerts-shell .alerts-folder-x,
+.alerts-shell .cb-x,
+.alerts-shell .ai-drop-x {
+  border-radius: 0;
+  color: var(--set-ink);
+}
+
+.alerts-shell .alerts-action:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--set-accent);
+}
+
+/* The destructive hovers. `.alerts-folder-x:hover`, `.cb-x:hover` and
+   `.ai-drop-x:hover` are all (0,2,0) in alerts.css — the same weight as the
+   rule above — so lifting the resting ink here also outranks their red and it
+   has to be restated. */
+.alerts-shell .alerts-action--danger:hover:not(:disabled),
+.alerts-shell .alerts-folder-x:hover,
+.alerts-shell .cb-x:hover,
+.alerts-shell .ai-drop-x:hover {
+  background: rgba(211, 47, 47, 0.22);
+  color: #ffffff;
+  opacity: 1;
+}
+
+/* SHARED CONTROL — also the catalog row actions and the Settings org switcher. */
+.alerts-shell .iam-switch-btn {
+  padding: 0.2rem 0.6rem;
+  border-color: var(--set-line);
+  border-radius: 0;
+  color: var(--set-ink);
+}
+
+.alerts-shell .iam-switch-btn:hover:not(:disabled) {
+  border-color: var(--set-accent);
+  background: transparent;
+  color: var(--set-accent);
+}
+
+/*
+   Two restatements the rule above would otherwise swallow, both (0,2,0) in
+   alerts-enterprise.css:
+
+   • the Actions cell's button is sized down to fit a 198px track beside a second
+     control, which the header-sized padding above would undo;
+   • an acknowledged row keeps amber ink AND an amber border, so the cell reads as
+     a state rather than as a button that happens to be a different colour.
+*/
+.alerts-shell .alerts-actions2 .iam-switch-btn {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.68rem;
+}
+
+.alerts-shell .alerts-menu-btn.alerts-actstate--acknowledged {
+  border-color: color-mix(in srgb, #ffb74d 55%, transparent);
+  color: #ffb74d;
+}
+
+/* ==========================================================================
+   RULES tab — folders rail + the rule table
+   ========================================================================== */
+
+/* The rail and the table are two halves of ONE card now, not two cards inside a
+   padded body: the panel's frame is the only edge on the screen, so the gap and
+   the padding that used to separate them are gone and a single hairline divides
+   them instead. */
+.alerts-shell .alerts-body {
+  gap: 0;
+  padding: 0;
+}
+
+.alerts-shell .alerts-rail {
+  width: 214px;
+  border: none;
+  border-right: 1px solid var(--set-line);
+  border-radius: 0;
+  background: var(--set-panel);
+}
+
+.alerts-shell .alerts-rail-search {
+  width: auto;
+  margin: 0.6rem var(--set-band-inset) 0;
+}
+
+/* Folders are row bands, exactly like a table's — same 35px height, same 8px
+   gaps, same insets. */
+.alerts-shell .alerts-rail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px var(--set-band-inset) var(--set-band-inset);
+}
+
+.alerts-shell .alerts-folder {
+  min-height: 35px;
+  padding: 2px 0.7rem;
+  border-radius: 0;
+  background: var(--set-row);
+  color: var(--set-ink);
+  font-size: 0.78rem;
+}
+
+.alerts-shell .alerts-folder:hover {
+  background: var(--set-row-hover);
+  color: var(--set-ink);
+}
+
+/* The accent EDGE plus the badge fill, matching the active-organization row in
+   Settings — not a fully teal band, which at 214px wide would be the loudest
+   thing on a screen whose job is the table. */
+.alerts-shell .alerts-folder.is-active {
+  background: var(--set-badge);
+  box-shadow: inset 3px 0 0 var(--set-accent);
+  color: var(--set-ink);
+  font-weight: 700;
+}
+
+.alerts-shell .alerts-main {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Base geometry for BOTH the column-heading row and the body rows. The side
+   padding here is the heading row's: the sum of the two insets, because the
+   headings sit outside the bands while the body rows sit inside them. */
+.alerts-shell .alerts-row {
+  padding: 2px calc(var(--set-band-inset) + var(--set-cell-pad));
+  border-bottom: none;
+  font-size: 0.78rem;
+}
+
+/* Column labels are full-strength white and unspaced, not the dimmed
+   letter-spaced caps used elsewhere in the app. No rule beneath them: the line
+   that looks like one is the top edge of the first band against the card. */
+.alerts-shell .alerts-row--head {
+  position: relative;
+  z-index: 1;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+  background: var(--set-panel);
+  color: var(--set-ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* Rows are separate bands with page colour between them, so the body is a
+   gap-spaced column rather than a scroller with divider lines. */
+.alerts-shell .alerts-body-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px var(--set-band-inset) var(--set-band-inset);
+}
+
+.alerts-shell .alerts-body-rows .alerts-row {
+  min-height: 35px;
+  padding: 2px var(--set-cell-pad);
+  border-radius: 0;
+  background: var(--set-row);
+}
+
+.alerts-shell .alerts-body-rows .alerts-row:hover {
+  background: var(--set-row-hover);
+}
+
+/*
+   Ink, flattened to one weight and one colour with only the timestamps dropped a
+   shade — the same flattening iam.css applies to the Product Catalog's rows
+   inside the Settings panel. A table that matches Settings on geometry but not on
+   ink still looks like a different table.
+
+   The name keeps its hover, which is the only affordance saying it opens the
+   editor, but loses the permanent bold: on a table where every row has one, a
+   column of emphasised names emphasises nothing.
+*/
+.alerts-shell .alerts-num,
+.alerts-shell .alerts-name,
+.alerts-shell .alerts-name--static,
+.alerts-shell .alerts-owner {
+  color: var(--set-ink);
+  font-weight: 400;
+}
+
+.alerts-shell .alerts-num {
+  font-family: var(--font-sans);
+}
+
+.alerts-shell .alerts-name:hover {
+  color: var(--set-accent);
+  text-decoration: underline;
+}
+
+.alerts-shell .alerts-name--static:hover {
+  color: var(--set-ink);
+  text-decoration: none;
+}
+
+.alerts-shell .alerts-dim,
+.alerts-shell .alerts-mono {
+  color: var(--set-ink-dim);
+  font-size: 0.76rem;
+}
+
+/*
+   The type badge: the Settings role/type box — a 2px inside accent border on a
+   dark teal-tinted fill — rather than three coloured pills.
+
+   Same argument iam.css makes about the role badge: an alert's TYPE is not a
+   severity, and an amber "Realtime" beside a teal "Scheduled" reads as a warning
+   about the row. The severity colours on the fired-alerts tab are kept, because
+   there severity is exactly what is being said.
+
+   Narrower and shorter than the 104x28 Settings box: this table has eleven
+   columns, and the type track's minimum is 110px.
+*/
+.alerts-shell .alerts-type {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  height: 26px;
+  padding: 2px 0.4rem;
+  border: 2px solid var(--set-accent);
+  border-radius: 0;
+  background-color: var(--set-badge);
+  color: var(--set-ink);
+  font-size: 0.7rem;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+/* More specific than the per-type rules in alerts.css, which would otherwise
+   tint the fill and the ink back. */
+.alerts-shell .alerts-type--realtime,
+.alerts-shell .alerts-type--scheduled,
+.alerts-shell .alerts-type--anomaly_detection {
+  background-color: var(--set-badge);
+  color: var(--set-ink);
+}
+
+/* ==========================================================================
+   ALERTS tab (fired) — summary cards, filter bar, wide table
+   ========================================================================== */
+
+/* The page's own padding and gaps are gone: the panel frame is the inset now, and
+   each block below states its own band inset. */
+.alerts-shell .alerts-page2 {
+  gap: 0;
+  padding: 0;
+}
+
+/* ── Summary cards ────────────────────────────────────────────────────────── */
+
+/* Sits under the header's inset rule now that the filter bar has moved up into
+   it, so the top gap is the space below that rule rather than the space between
+   two bands — hence tighter than it reads. */
+.alerts-shell .alerts-cards {
+  gap: 8px;
+  padding: 0.6rem var(--set-band-inset) 0.15rem;
+}
+
+/*
+   THREE SIDES, NOT `border-color`. The card's left edge is its severity — six
+   `.alerts-card--*` rules in alerts-enterprise.css set nothing but
+   `border-left-color`, and they are only (0,1,0) specific. A `border-color`
+   shorthand here (or a `border:` shorthand) is (0,2,0) and would repaint all four
+   sides grey, silently flattening every card to the same colour.
+*/
+.alerts-shell .alerts-card {
+  border-top-color: var(--set-line);
+  border-right-color: var(--set-line);
+  border-bottom-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-row);
+}
+
+.alerts-shell .alerts-card:hover {
+  background: var(--set-row-hover);
+}
+
+/* An applied card gets the badge treatment — 2px accent edge on the tinted fill
+   — so "selected" is a frame and the severity stays a colour. Reusing the tint
+   for both would make the two ambiguous. */
+.alerts-shell .alerts-card.is-active {
+  border-color: var(--set-accent);
+  background: var(--set-badge);
+  box-shadow: inset 0 0 0 2px var(--set-accent);
+}
+
+.alerts-shell .alerts-card-label {
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .alerts-card-value {
+  color: var(--set-ink);
+  font-weight: 700;
+}
+
+.alerts-shell .alerts-card-skeleton,
+.alerts-shell .alerts-skel {
+  border-radius: 0;
+}
+
+/* ── Filter bar ───────────────────────────────────────────────────────────── */
+
+/* A band on the card rather than a bordered box on a padded page. It carries no
+   rule of its own: the title beside it already has one, and the column-heading row
+   below sits directly on the card — two more hairlines would slice one card into
+   three. */
+.alerts-shell .alerts-toolbar2 {
+  gap: 0.45rem;
+  padding: 0.6rem var(--set-band-inset);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/*
+   The fired tab's header: "Fired Alerts" and the filter bar on ONE band, one row.
+
+   Now that the count, the freshness stamp and Rows-per-page have moved to the
+   footer, the toolbar is a single row of controls — so this reads exactly like
+   the Rules header it is modelled on: title, scope selectors, then the
+   right-hand cluster. `align-items: center` for that reason, where a two-row
+   toolbar needed flex-start.
+
+   `.alerts-head`'s `flex-wrap: wrap` is inherited untouched — below the width
+   where the title and the controls stop fitting, the toolbar drops to its own
+   line rather than crushing either.
+*/
+.alerts-shell .alerts-head--fired {
+  align-items: center;
+  gap: 0.5rem 1.15rem;
+  padding: 0.55rem var(--set-band-inset);
+}
+
+.alerts-shell .alerts-head--fired .alerts-title {
+  white-space: nowrap;
+}
+
+/*
+   The band inset and the vertical padding belong to the header, so the toolbar
+   contributes neither — only the width it takes of the row.
+
+   The 640px basis is roughly what the control cluster measures now that both
+   filter dropdowns sit in it beside the search box (≈130 + 130 + 200 for the
+   three filters, then Auto, pause and refresh). Sized to the content on purpose:
+   when the window is too narrow for the title and that cluster on one line, the
+   whole toolbar should drop to its own line rather than let the cluster wrap
+   into two ragged rows inside the header.
+*/
+.alerts-shell .alerts-head--fired .alerts-toolbar2 {
+  flex: 1 1 640px;
+  min-width: 0;
+  padding: 0;
+}
+
+/* The toolbar's own row is the flex line that actually carries the controls, and
+   `.alerts-head-right` inside it needs a full-height line to sit on. */
+.alerts-shell .alerts-head--fired .alerts-toolbar2-row {
+  gap: 0.5rem;
+}
+
+/*
+   NO width here, deliberately.
+
+   This used to override `.alerts-search2`'s own 320px back on top of the 200px
+   the `.iam-search` rule above sets. Now it lets that rule win, which is what
+   makes the fired-alerts search the SAME BOX as the Rules search — same width,
+   same fill, same height — so it does not resize as you move between the two
+   tabs. Its position comes from being the first child of `.alerts-head-right`,
+   the same cluster the Rules search sits in.
+*/
+.alerts-shell .alerts-search2-x {
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .alerts-search2-x:hover {
+  color: var(--set-ink);
+}
+
+.alerts-shell .alerts-refresh2-label {
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .alerts-count2 {
+  color: var(--set-ink);
+}
+
+/* ── Checkbox dropdowns (severity, status) ────────────────────────────────── */
+
+.alerts-shell .cbs-face {
+  height: 28px;
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+}
+
+.alerts-shell .cbs-face:hover,
+.alerts-shell .cbs-face.is-open {
+  border-color: var(--set-accent);
+}
+
+/* An active filter is visibly different from "All" — without this, a dropdown
+   narrowing the table looks identical to one that is not. */
+.alerts-shell .cbs-face.has-value {
+  border-color: var(--set-accent);
+  color: var(--set-accent);
+}
+
+.alerts-shell .cbs-clear,
+.alerts-shell .cbs-caret,
+.alerts-shell .cbs-count {
+  color: var(--set-ink-dim);
+}
+
+/* Restated for the same reason as the row glyphs: `.cbs-clear:hover` is (0,2,0),
+   which the rule above matches, and "clear this filter" needs to stay red. */
+.alerts-shell .cbs-clear:hover {
+  color: #ef5350;
+}
+
+/*
+   The open panel.
+
+   #404040 — the SAME fill as the face that opened it, and as every other control
+   in this header — not the card's #262626. It was on `--set-panel`, which is the
+   exact tone of the card behind it: the panel was then distinguished from the
+   page only by a 1px hairline and a shadow, so it read as a flat patch rather
+   than as the control opening up. The tone chain here is card #262626 → menu
+   #404040 → hovered row #4d4d4d, which is the chain the tab strip and the
+   pagers already use.
+
+   `border-color` matches the fill rather than outlining it: at this tone the
+   edge is the shadow's job, and a #404040 border on a #404040 panel is what
+   keeps the base rule's `border: 1px solid` from drawing a seam inside it.
+*/
+.alerts-shell .cbs-menu {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+}
+
+/* The menu takes focus programmatically on open so it can capture the arrow
+   keys, so this ring is drawn EVERY time it opens rather than only for keyboard
+   users. In the accent, then — the base rule paints it `--accent-color`, which is
+   a different teal from this screen's. */
+.alerts-shell .cbs-menu:focus,
+.alerts-shell .cbs-menu:focus-visible {
+  outline: 1px solid var(--set-accent);
+  outline-offset: -1px;
+}
+
+/* The seam under the Select all / Clear row. A light rule, because #404040 on
+   #404040 is invisible — same reason `--set-rule` exists for the card titles. */
+.alerts-shell .cbs-actions {
+  border-bottom-color: rgba(255, 255, 255, 0.16);
+}
+
+.alerts-shell .cbs-link {
+  color: var(--set-accent);
+}
+
+/* Full-strength ink at rest, matching `.ssel-item` — the dimmed grey this had
+   was legible on #242424 and muddy on #404040. */
+.alerts-shell .cbs-item {
+  padding: 0.32rem 0.45rem;
+  border-radius: 0;
+  color: var(--set-ink);
+}
+
+.alerts-shell .cbs-item:hover,
+.alerts-shell .cbs-item.is-cursor {
+  background: #4d4d4d;
+  color: var(--set-ink);
+}
+
+/* Accent for a ticked option, like `.ssel-item.is-on` and the Settings org
+   switcher's active row. The tick already says it is on; this is what makes that
+   readable while scanning the list rather than only per-row. */
+.alerts-shell .cbs-item.is-on {
+  color: var(--set-accent);
+  font-weight: 600;
+}
+
+.alerts-shell .cbs-item input,
+.alerts-shell .pt-check {
+  accent-color: var(--set-accent);
+}
+
+/* ── Bulk action bar ──────────────────────────────────────────────────────── */
+
+.alerts-shell .alerts-bulkbar2 {
+  margin: 0 var(--set-band-inset);
+  border-color: var(--set-accent);
+  border-radius: 0;
+  background: var(--set-badge);
+}
+
+.alerts-shell .alerts-bulkbar2-count {
+  color: var(--set-ink);
+}
+
+/* ── Wide table ───────────────────────────────────────────────────────────── */
+
+.alerts-shell .alerts-table2 {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.alerts-shell .alerts-row2 {
+  padding: 2px calc(var(--set-band-inset) + var(--set-cell-pad));
+  border-bottom: none;
+  font-size: 0.78rem;
+}
+
+.alerts-shell .alerts-row2--head {
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+  background: var(--set-panel);
+  color: var(--set-ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.alerts-shell .alerts-body2 {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px var(--set-band-inset) var(--set-band-inset);
+}
+
+.alerts-shell .alerts-body2 .alerts-row2 {
+  min-height: 35px;
+  padding: 2px var(--set-cell-pad);
+  border-radius: 0;
+  background: var(--set-row);
+}
+
+.alerts-shell .alerts-body2 .alerts-row2:hover {
+  background: var(--set-row-hover);
+}
+
+.alerts-shell .alerts-row2.is-selected {
+  background: var(--set-badge);
+}
+
+/* An open alert keeps its left edge. Every other status is legible from its pill;
+   this is the one that should catch the eye while scrolling past. */
+.alerts-shell .alerts-row2.is-open {
+  box-shadow: inset 3px 0 0 #ef5350;
+}
+
+.alerts-shell .alerts-sort2 {
+  color: inherit;
+}
+
+.alerts-shell .alerts-sort2:hover {
+  color: var(--set-ink);
+}
+
+.alerts-shell .alerts-sort2.is-active {
+  color: var(--set-accent);
+}
+
+.alerts-shell .alerts-name2-btn {
+  color: var(--set-ink);
+  font-weight: 400;
+}
+
+.alerts-shell .alerts-name2-btn:hover {
+  color: var(--set-accent);
+}
+
+.alerts-shell .alerts-time2,
+.alerts-shell .alerts-dur2,
+.alerts-shell .alerts-usage2-pct {
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .alerts-usage2,
+.alerts-shell .alerts-usage2-main {
+  color: var(--set-ink);
+}
+
+/* Squared, but the severity and status colours stay: unlike an alert's type,
+   these ARE severities, and the word is carried alongside the colour so a
+   screenshot in a ticket still reads. */
+.alerts-shell .alerts-sev2,
+.alerts-shell .alerts-status2,
+.alerts-shell .alerts-badge2 {
+  border-radius: 0;
+}
+
+.alerts-shell .alerts-status2--closed,
+.alerts-shell .alerts-badge2--affected {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .alerts-badge2--type {
+  border-color: var(--set-line);
+  color: var(--set-ink-dim);
+}
+
+/* ── Row action menu ──────────────────────────────────────────────────────── */
+
+.alerts-shell .alerts-menu-pop {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-panel);
+}
+
+.alerts-shell .alerts-menu-item {
+  border-radius: 0;
+  color: var(--set-ink);
+}
+
+.alerts-shell .alerts-menu-item:hover:not(:disabled) {
+  background: var(--set-row-hover);
+}
+
+/* Reopen is the one line in the menu that undoes rather than advances, and
+   `.alerts-menu-item--reopen` is only (0,1,0) — outranked by the ink above. */
+.alerts-shell .alerts-menu-item--reopen {
+  color: #64b5f6;
+}
+
+.alerts-shell .alerts-menu-sep {
+  background: var(--set-line);
+}
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+
+/* Three sides again, for the same reason as the summary cards: the toast's left
+   edge is its tone, and `.alerts-toast2--ok/--warn/--error` set only
+   `border-left-color`. */
+.alerts-shell .alerts-toast2 {
+  border-top-color: var(--set-line);
+  border-right-color: var(--set-line);
+  border-bottom-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-panel);
+  color: var(--set-ink);
+}
+
+.alerts-shell .alerts-toast2 button {
+  color: var(--set-ink-dim);
+}
+
+/* ==========================================================================
+   Dialogs and the details drawer
+
+   These are children of the screen root (position:fixed, not portalled), so the
+   palette is inherited and the `--set-*` tokens above resolve. Given the same
+   chrome as the Settings `uem-` dialog: square, #404040 hairline, inset rules
+   below the head and above the foot, and a filled square close button.
+   ========================================================================== */
+
+.alerts-shell .alerts-modal {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-panel);
+}
+
+.alerts-shell .alerts-drawer {
+  border-left-color: var(--set-line);
+  background: var(--set-panel);
+}
+
+.alerts-shell .alerts-modal-head {
+  position: relative;
+  padding: 1.05rem 1.5rem;
+  border-bottom: none;
+}
+
+.alerts-shell .alerts-modal-head::after {
+  content: '';
+  position: absolute;
+  right: 1.5rem;
+  bottom: 0;
+  left: 1.5rem;
+  height: 1px;
+  background: var(--set-line);
+}
+
+.alerts-shell .alerts-modal-title {
+  color: var(--set-ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.alerts-shell .alerts-modal-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.alerts-shell .alerts-modal-x:hover {
+  background: #4d4d4d;
+  color: var(--set-ink);
+}
+
+.alerts-shell .alerts-modal-body,
+.alerts-shell .alerts-drawer-body {
+  padding: 1.5rem;
+}
+
+.alerts-shell .alerts-modal-foot {
+  position: relative;
+  padding: 1.05rem 1.5rem;
+  border-top: none;
+}
+
+.alerts-shell .alerts-modal-foot::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 1.5rem;
+  left: 1.5rem;
+  height: 1px;
+  background: var(--set-line);
+}
+
+/* The dialogs' buttons get the Settings dialog's 120px minimum, so Cancel and
+   the primary action are the same size whichever verb they carry. The details
+   drawer's foot is excluded — it holds up to four telemetry links and a Close,
+   which at 120px each would wrap onto a second line. */
+.alerts-shell .alerts-modal .alerts-modal-foot .alerts-btn-ghost,
+.alerts-shell .alerts-modal .alerts-modal-foot .alerts-btn-primary {
+  min-width: 120px;
+  height: 34px;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+
+.alerts-shell .alerts-drawer-tabs {
+  border-bottom-color: var(--set-line);
+}
+
+.alerts-shell .alerts-drawer-tab {
+  border-radius: 0;
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .alerts-drawer-tab:hover {
+  color: var(--set-ink);
+}
+
+.alerts-shell .alerts-drawer-tab.is-active {
+  border-bottom-color: var(--set-accent);
+  color: var(--set-accent);
+}
+
+/* Read-only payload blocks: the description, the raw JSON, the condition and
+   trigger dumps. The row-band fill, so they read as recessed panels on the card
+   rather than as a third surface colour. */
+.alerts-shell .alerts-pre2,
+.alerts-shell .alerts-desc2,
+.alerts-shell .oo-incident-facts,
+.alerts-shell .oo-incident-alert {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-row);
+  color: var(--set-ink);
+}
+
+/* The compact variant deliberately drops the box — it is a nested fact list
+   inside an already-bordered card — and `.oo-incident-facts--compact` is only
+   (0,1,0), so the rule above would give it one back. */
+.alerts-shell .oo-incident-facts--compact {
+  border: 0;
+  background: transparent;
+}
+
+.alerts-shell .oo-incident-facts dt,
+.alerts-shell .pc-facts dt,
+.alerts-shell .ae-summary dt {
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .oo-incident-facts dd,
+.alerts-shell .pc-facts dd,
+.alerts-shell .ae-summary dd {
+  color: var(--set-ink);
+}
+
+.alerts-shell .pc-facts dd code {
+  color: var(--set-accent);
+}
+
+/* Section headings inside the drawer. Kept as the app's small caps rather than
+   promoted to the card-title treatment: they subdivide one scrolling panel, and
+   at 0.95rem/700 each would read as a new card. */
+.alerts-shell .pc-section-title {
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .pc-confirm-text,
+.alerts-shell .alerts-ack-label {
+  color: var(--set-ink);
+}
+
+.alerts-shell .pc-dim,
+.alerts-shell .ae-hint {
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .pc-confirm-warn {
+  border-radius: 0;
+}
+
+/* The audit trail's left edges. `.alerts-trail2 li` and the five toned variants
+   are BOTH (0,2,1) in alerts-enterprise.css, so lifting the default to this
+   palette also outranks the tones — they have to be restated one level up or
+   every event in the history reads as the same kind of event. */
+.alerts-shell .alerts-trail2 li {
+  border-left-color: var(--set-line);
+}
+
+.alerts-shell .alerts-trail2 li.alerts-trail2-firing       { border-left-color: #ef5350; }
+.alerts-shell .alerts-trail2 li.alerts-trail2-acknowledged { border-left-color: #ffa726; }
+.alerts-shell .alerts-trail2 li.alerts-trail2-resolved     { border-left-color: #4caf50; }
+.alerts-shell .alerts-trail2 li.alerts-trail2-closed       { border-left-color: var(--set-ink-faint); }
+.alerts-shell .alerts-trail2 li.alerts-trail2-reopened     { border-left-color: #64b5f6; }
+
+.alerts-shell .alerts-trail2-when,
+.alerts-shell .alerts-trail2-note {
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .alerts-trail2-actor {
+  color: var(--set-ink);
+}
+
+/* ==========================================================================
+   Editor and Import
+
+   Both REPLACE the list inside the panel rather than opening over it, so they
+   are the card's whole contents and their own top strips sit flush against the
+   frame.
+   ========================================================================== */
+
+.alerts-shell .ae-topbar {
+  padding: 0.9rem var(--set-band-inset);
+  border-bottom: 1px solid var(--set-line);
+  background: var(--set-panel);
+}
+
+.alerts-shell .ae-back {
+  width: 28px;
+  height: 28px;
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+}
+
+.alerts-shell .ae-back:hover {
+  border-color: var(--set-accent);
+  background: #4d4d4d;
+  color: var(--set-accent);
+}
+
+.alerts-shell .ae-label,
+.alerts-shell .ae-row-label {
+  color: var(--set-ink);
+}
+
+/* ── the alert title block ──────────────────────────────────────────────────
+   Name as a heading you type into, with "Add Alert in <folder>" beneath. The
+   inputs are deliberately NOT given this shell's boxed `.ae-input` treatment:
+   the whole point is that they read as text until touched.
+   ────────────────────────────────────────────────────────────────────────── */
+.alerts-shell .ae-title-input {
+  color: var(--set-ink);
+}
+
+.alerts-shell .ae-title-input::placeholder {
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .ae-title-input:hover {
+  border-bottom-color: var(--set-rule);
+}
+
+.alerts-shell .ae-title-input:focus {
+  border-bottom-color: var(--set-accent);
+  background: var(--set-row);
+}
+
+.alerts-shell .ae-title-pencil {
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .ae-title-pencil:hover {
+  color: var(--set-accent);
+}
+
+.alerts-shell .ae-subtitle {
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .ae-folder-add,
+.alerts-shell .ae-icon-btn {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .ae-folder-add:hover,
+.alerts-shell .ae-icon-btn:hover:not(:disabled) {
+  border-color: var(--set-accent);
+  background: #4d4d4d;
+  color: var(--set-accent);
+}
+
+/* ── warning tier, comparison windows, variables, token input ───────────── */
+
+.alerts-shell .ae-warn {
+  border-color: var(--set-rule);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.alerts-shell .ae-warn-op {
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .ae-warn-x {
+  border-radius: 0;
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .ae-warn-x:hover {
+  background: rgba(211, 47, 47, 0.16);
+  color: #ffffff;
+}
+
+.alerts-shell .ae-window {
+  border-color: var(--set-line);
+  border-left-color: var(--set-accent);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.alerts-shell .ae-window-title {
+  color: var(--set-ink);
+}
+
+.alerts-shell .tki-box {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-row);
+}
+
+.alerts-shell .tki-box:focus-within {
+  border-color: var(--set-accent);
+}
+
+.alerts-shell .tki-chip {
+  border-radius: 0;
+  background: var(--set-badge);
+  color: var(--set-ink);
+}
+
+.alerts-shell .tki-chip-x {
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .tki-input {
+  color: var(--set-ink);
+}
+
+.alerts-shell .tki-input::placeholder {
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .tki-suggest-chip {
+  border-color: var(--set-rule);
+  border-radius: 0;
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .tki-suggest-chip:hover {
+  border-color: var(--set-accent);
+  color: var(--set-ink);
+}
+
+.alerts-shell .ae-req {
+  color: var(--set-accent);
+}
+
+.alerts-shell .ae-error {
+  color: #ef5350;
+}
+
+/* The two-column body keeps its gaps — these are genuinely separate cards inside
+   the panel, unlike the rail and the table on the Rules tab — but the outer
+   padding drops to the band inset so they line up with everything else. */
+.alerts-shell .ae-cols,
+.alerts-shell .ai-cols {
+  gap: var(--set-band-inset);
+  padding: var(--set-band-inset);
+}
+
+.alerts-shell .ae-left,
+.alerts-shell .ae-right,
+.alerts-shell .ai-left {
+  gap: var(--set-band-inset);
+}
+
+.alerts-shell .ae-card {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-row);
+}
+
+/* No font-size here on purpose: `.ae-card-head--plain` — the Preview and Summary
+   headings — sets 1rem at (0,1,0), and a size on this (0,2,0) selector would
+   shrink both of them back to the section-heading size. */
+.alerts-shell .ae-card-head {
+  border-bottom-color: var(--set-line);
+  color: var(--set-ink);
+  font-weight: 700;
+}
+
+/* The accent tick, squared like every other edge on the screen. */
+.alerts-shell .ae-card-head::before {
+  border-radius: 0;
+  background: var(--set-accent);
+}
+
+.alerts-shell .ae-unit {
+  border-color: var(--set-line);
+  border-left: none;
+  border-radius: 0;
+  background: #4d4d4d;
+  color: var(--set-ink);
+}
+
+.alerts-shell .ae-unit-group .ae-input {
+  border-radius: 0;
+}
+
+.alerts-shell .ae-realtime-note {
+  border-color: var(--set-line);
+  border-left-color: var(--set-accent);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .ae-realtime-note strong {
+  color: var(--set-ink);
+}
+
+/* The segmented tab strip. Squared like every other edge in this shell, and the
+   trough is --set-line so the raised active pill (--set-panel) reads as sitting
+   above it rather than merely being a different colour. */
+.alerts-shell .ae-tabs {
+  margin: 0.55rem var(--set-band-inset);
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+}
+
+.alerts-shell .ae-tab {
+  border-radius: 0;
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .ae-tab:hover {
+  color: var(--set-ink);
+}
+
+.alerts-shell .ae-tab.is-active {
+  background: var(--set-panel);
+  color: var(--set-accent);
+  box-shadow: none;
+}
+
+.alerts-shell .ae-tab-badge {
+  border-radius: 0;
+  background: var(--set-accent);
+  color: var(--set-ink);
+}
+
+.alerts-shell .ae-placeholder,
+.alerts-shell .ae-preview-count,
+.alerts-shell .ae-foot-left {
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .ae-summary-sql {
+  color: var(--set-ink);
+}
+
+.alerts-shell .ae-preview-table th {
+  border-bottom-color: var(--set-line);
+  background: var(--set-row);
+  color: var(--set-ink);
+  letter-spacing: 0;
+}
+
+.alerts-shell .ae-preview-table td {
+  border-bottom-color: var(--set-line);
+  color: var(--set-ink);
+}
+
+.alerts-shell .ae-foot {
+  padding: 0.7rem var(--set-band-inset);
+  border-top: 1px solid var(--set-line);
+  background: var(--set-panel);
+}
+
+/* ── SearchableSelect ─────────────────────────────────────────────────────── */
+
+.alerts-shell .ssel-face {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+}
+
+.alerts-shell .ssel-face:hover:not(:disabled),
+.alerts-shell .ssel-face.is-open,
+.alerts-shell .ssel-face:focus-visible {
+  border-color: var(--set-accent);
+}
+
+.alerts-shell .ssel-face:not(.has-value) .ssel-face-text {
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .ssel-clear,
+.alerts-shell .ssel-caret,
+.alerts-shell .ssel-count,
+.alerts-shell .ssel-empty {
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .ssel-clear {
+  border-radius: 0;
+}
+
+.alerts-shell .ssel-clear:hover {
+  background: rgba(211, 47, 47, 0.22);
+  color: #ffffff;
+}
+
+.alerts-shell .ssel-menu {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-panel);
+}
+
+.alerts-shell .ssel-search,
+.alerts-shell .ssel-actions {
+  border-bottom-color: var(--set-line);
+}
+
+.alerts-shell .ssel-search input {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+}
+
+.alerts-shell .ssel-search input:focus {
+  border-color: var(--set-accent);
+}
+
+.alerts-shell .ssel-item {
+  border-radius: 0;
+  color: var(--set-ink);
+}
+
+.alerts-shell .ssel-item.is-cursor {
+  background: var(--set-row-hover);
+}
+
+.alerts-shell .ssel-item.is-on {
+  color: var(--set-accent);
+}
+
+/* A value the option list no longer holds — usually a stream or field deleted
+   underneath the alert, which is the one thing in this list worth colouring.
+   `.ssel-item.is-missing` is (0,2,0), matching the ink rule above. */
+.alerts-shell .ssel-item.is-missing {
+  color: var(--warn-color);
+}
+
+/* ── Condition builder ────────────────────────────────────────────────────── */
+
+.alerts-shell .cb-group {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.alerts-shell .cb-join {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-accent);
+}
+
+.alerts-shell .cb-join:hover {
+  border-color: var(--set-accent);
+  background: #4d4d4d;
+}
+
+.alerts-shell .cb-join--static,
+.alerts-shell .cb-join--static:hover {
+  border-color: transparent;
+  background: none;
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .cb-toolbar {
+  border-top-color: var(--set-line);
+}
+
+.alerts-shell .cb-add {
+  color: var(--set-accent);
+}
+
+.alerts-shell .cb-empty {
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .cb-filters {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .cb-filters:hover,
+.alerts-shell .cb-filters.is-open {
+  color: var(--set-ink);
+}
+
+.alerts-shell .cb-filters:hover {
+  border-color: var(--set-accent);
+}
+
+.alerts-shell .cb-collapsed {
+  border-color: var(--set-line);
+  border-radius: 0;
+  color: var(--set-ink-faint);
+}
+
+.alerts-shell .cb-collapsed strong {
+  color: var(--set-ink);
+}
+
+.alerts-shell .cb-move-btn {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .cb-move-btn:hover:not(:disabled) {
+  border-color: var(--set-accent);
+  color: var(--set-accent);
+}
+
+.alerts-shell .cb-add.is-on {
+  color: var(--set-ink);
+}
+
+.alerts-shell .ae-varrow > .ae-input:first-child {
+  width: 150px;
+}
+
+/* ── Import ───────────────────────────────────────────────────────────────── */
+
+.alerts-shell .ai-drop {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-row);
+  color: var(--set-ink-dim);
+}
+
+.alerts-shell .ai-drop:hover,
+.alerts-shell .ai-drop.is-over {
+  border-color: var(--set-accent);
+  background: var(--set-row-hover);
+  color: var(--set-ink);
+}
+
+.alerts-shell .ai-editor {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-row);
+  color: var(--set-ink);
+}
+
+.alerts-shell .ai-editor:focus {
+  border-color: var(--set-accent);
+}
+
+.alerts-shell .ai-editor--invalid {
+  border-color: #d32f2f;
+}
+
+.alerts-shell .ai-out-item {
+  border-bottom-color: var(--set-line);
+}
+
+.alerts-shell .ai-out-name {
+  color: var(--set-ink);
+  font-weight: 600;
+}
+
+.alerts-shell .ai-out-msg {
+  color: var(--set-ink-dim);
+}
+
+/* ── Narrow windows ───────────────────────────────────────────────────────── */
+
+/* Only the tab padding and the rail, matching iam.css: the 12px shell inset, the
+   19px strip offset and the 11px frame are absolute figures from the spec and
+   hold at every width. */
+@media (max-width: 900px) {
+  .alerts-shell .alerts-shell-tab {
+    padding: 0 0.5rem;
+  }
+
+  /* The rail stacks above the table below this width (alerts.css turns
+     `.alerts-body` into a column), so its right-hand divider becomes the line
+     under it. */
+  .alerts-shell .alerts-rail {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--set-line);
+  }
+}

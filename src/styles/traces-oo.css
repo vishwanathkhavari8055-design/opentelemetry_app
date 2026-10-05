@@ -1,0 +1,600 @@
+/* ==========================================================================
+   Traces screen — tab strip, Rate/Errors/Duration charts, and the three tables.
+
+   Reuses the Logs screen's chrome wholesale (.tb-btn, .tb-switch, .tb-run,
+   .logs-body, .logs-main, .fieldbar, .results-bar) so the two screens are the
+   same product. Only what's genuinely different lives here.
+   ========================================================================== */
+
+.traces-view--oo {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.traces-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.25rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+/* ── Tab strip ──────────────────────────────────────────────────────────── */
+.tv-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.1rem;
+  margin-right: 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-color);
+}
+
+.tv-tab {
+  padding: 0.25rem 0.8rem;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.tv-tab:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg);
+}
+
+.tv-tab.is-active {
+  color: #fff;
+  background: var(--accent-color);
+}
+
+/* Errors-only switch: a red dot rather than a word, matching the reference,
+   with the state carried by the track like every other switch here. */
+.tv-errors-switch .tv-errors-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--error-color);
+}
+
+.tv-errors-switch:not(.is-on) .tv-errors-dot {
+  opacity: 0.45;
+}
+
+/* ── Found / Error chips ────────────────────────────────────────────────── */
+.tv-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.tv-chip {
+  padding: 0.15rem 0.6rem;
+  border-radius: 4px;
+  background: rgba(0, 150, 143, 0.14);
+  color: var(--accent-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-chip--error {
+  background: rgba(211, 47, 47, 0.16);
+  color: #ffffff;
+}
+
+/* ── Chart row ──────────────────────────────────────────────────────────── */
+.trace-charts {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.tc-panel {
+  min-width: 0;
+  padding: 0.3rem 0.5rem 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+.tc-title {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+
+.tc-empty {
+  height: var(--histo-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+/* The y-axis labels are a flex column beside the plot rather than SVG text:
+   preserveAspectRatio="none" stretches the drawing horizontally, which would
+   smear any text inside it. */
+.tc-plot {
+  display: flex;
+  align-items: stretch;
+  gap: 0.3rem;
+}
+
+.tc-yaxis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-shrink: 0;
+  width: 3.2rem;
+  height: var(--histo-h);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Half a line up, so each label sits centred on its gridline. */
+.tc-yaxis span {
+  transform: translateY(-0.4em);
+  white-space: nowrap;
+}
+
+.tc-svg {
+  flex: 1;
+  min-width: 0;
+  height: var(--histo-h);
+  overflow: visible;
+}
+
+.tc-grid {
+  stroke: var(--border-color);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+
+.tc-line {
+  stroke: #4dabf7;
+  stroke-width: 1.5;
+}
+
+.tc-bar {
+  fill: var(--error-color);
+}
+
+/* Fixed on-screen dot size regardless of panel width: preserveAspectRatio
+   "none" stretches x, so an r-sized circle would render as a wide ellipse. */
+.tc-dot {
+  vector-effect: non-scaling-stroke;
+  stroke-width: 2.5;
+  paint-order: stroke;
+}
+
+.tc-dot.is-p50 { fill: #4dabf7; stroke: #4dabf7; }
+.tc-dot.is-p95 { fill: #ffa94d; stroke: #ffa94d; }
+.tc-dot.is-max { fill: #ff8787; stroke: #ff8787; opacity: 0.75; }
+
+.tc-xaxis {
+  display: flex;
+  justify-content: space-between;
+  padding-left: 3.5rem;
+  padding-top: 0.1rem;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: var(--text-secondary);
+}
+
+/* Bucket width and the duration legend, inline in the panel title. The old
+   .tc-interval was absolutely positioned at top:-1.05rem on the chart row,
+   which laid it over the pagination controls sitting above the charts. */
+.tc-subtitle {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 0.62rem;
+  font-weight: 400;
+}
+
+.tc-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  font-weight: 500;
+}
+
+.tc-legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.tc-legend.is-p50 .tc-legend-dot { background: #4dabf7; }
+.tc-legend.is-p95 .tc-legend-dot { background: #ffa94d; }
+.tc-legend.is-max .tc-legend-dot { background: #ff8787; }
+
+/* ==========================================================================
+   Spans / Traces tables
+   ========================================================================== */
+
+.tt-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tt-head,
+.tt-row {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 175px)   /* timestamp */
+    minmax(120px, 180px)   /* service   */
+    minmax(160px, 1fr)     /* operation */
+    minmax(80px, 100px)    /* duration  */
+    minmax(90px, 110px);   /* status    */
+  align-items: center;
+  column-gap: 0.6rem;
+  padding: 0.25rem 0.6rem;
+}
+
+/* Traces adds Spans and Service Latency. */
+.tt-head--traces,
+.tt-row--traces {
+  grid-template-columns:
+    minmax(150px, 175px)
+    minmax(120px, 165px)
+    minmax(150px, 1fr)
+    minmax(80px, 95px)
+    minmax(48px, 60px)
+    minmax(90px, 105px)
+    minmax(120px, 200px);
+}
+
+.tt-head {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.tt-body {
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.tt-row {
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.73rem;
+  cursor: pointer;
+  transition: background 110ms ease;
+}
+
+.tt-row:hover,
+.tt-row:focus-visible {
+  background: var(--hover-bg);
+  outline: none;
+}
+
+/* Errored rows get the same left-edge treatment as an error log line, so the
+   two screens read the same way at a glance. */
+.tt-row.is-error {
+  box-shadow: inset 3px 0 0 var(--error-color);
+}
+
+.tt-cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tt-col-ts {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.tt-col-svc {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.tt-svc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.tt-svc-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tt-col-op {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.tt-col-dur,
+.tt-col-spans {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.tt-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.tt-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.tt-status--unset,
+.tt-status--ok,
+.tt-status--success {
+  background: rgba(56, 142, 60, 0.16);
+  color: #000000;
+}
+
+.tt-status--error {
+  background: rgba(211, 47, 47, 0.18);
+  color: #ffffff;
+}
+
+/* ── Service Latency bar ────────────────────────────────────────────────── */
+.tt-col-lat {
+  overflow: visible;
+}
+
+.tt-lat-bar {
+  display: flex;
+  width: 100%;
+  height: 12px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--border-color);
+}
+
+.tt-lat-bar--empty {
+  opacity: 0.4;
+}
+
+.tt-lat-seg {
+  height: 100%;
+  min-width: 2px;
+}
+
+/* ==========================================================================
+   Service Catalog
+   ========================================================================== */
+
+.sc-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0.4rem;
+}
+
+.sc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.sc-filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 1 300px;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-secondary);
+}
+
+.sc-filter:focus-within {
+  border-color: var(--accent-color);
+}
+
+.sc-filter input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.76rem;
+}
+
+.sc-chip {
+  padding: 0.15rem 0.6rem;
+  border-radius: 4px;
+  background: rgba(0, 150, 143, 0.14);
+  color: var(--accent-color);
+  font-size: 0.73rem;
+  font-weight: 600;
+}
+
+.sc-chip--critical {
+  background: rgba(211, 47, 47, 0.16);
+  color: #ffffff;
+}
+
+.sc-chip--warning {
+  background: rgba(245, 124, 0, 0.16);
+  color: #000000;
+}
+
+.sc-chip--degraded {
+  background: rgba(255, 202, 40, 0.14);
+  color: #000000;
+}
+
+.sc-head,
+.sc-row {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1.6fr)  /* service */
+    minmax(90px, 0.9fr)   /* status  */
+    repeat(8, minmax(72px, 0.85fr));
+  align-items: center;
+  column-gap: 0.5rem;
+  padding: 0.25rem 0.6rem;
+}
+
+.sc-head {
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px 6px 0 0;
+  background: var(--surface-color);
+}
+
+.sc-body {
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+}
+
+.sc-cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.73rem;
+}
+
+.sc-col-svc {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sc-col-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  justify-content: flex-end;
+}
+
+.sc-col-num.is-warn {
+  color: #ffa726;
+}
+
+.sc-sortable {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.sc-sortable:hover {
+  color: var(--accent-color);
+}
+
+.sc-sortable.is-sorted {
+  color: var(--accent-color);
+}
+
+.sc-sort-caret {
+  font-size: 0.6rem;
+  opacity: 0.7;
+}
+
+.sc-row {
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 110ms ease;
+}
+
+.sc-row:last-child {
+  border-bottom: none;
+}
+
+.sc-row:hover,
+.sc-row:focus-visible {
+  background: var(--hover-bg);
+  outline: none;
+}
+
+.sc-status {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.sc-status--critical { color: var(--error-color); }
+.sc-status--warning  { color: #ffa726; }
+.sc-status--degraded { color: #ffca28; }
+.sc-status--healthy  { color: #66bb6a; }
+
+@media (max-width: 1200px) {
+  /* Below this the three charts stop being readable side by side. */
+  .trace-charts {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,836 @@
+/* ==========================================================================
+   Trace detail — Waterfall / Flame Graph / Trace Graph, plus the span panel.
+   ========================================================================== */
+
+.td {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg-color);
+}
+
+.td-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  height: 100%;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.td-nav-back {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.td-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.td-back,
+.td-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.td-back:hover,
+.td-close:hover {
+  color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.td-title {
+  margin: 0;
+  max-width: 46ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.td-when {
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+.td-tid {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+.td-tid code {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.td-pill {
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--hover-bg);
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.td-pill--error {
+  background: rgba(211, 47, 47, 0.18);
+  color: #ffffff;
+}
+
+.td-pill--ok {
+  background: rgba(56, 142, 60, 0.14);
+  color: #000000;
+}
+
+.td-head-spacer {
+  flex: 1;
+}
+
+.td-copy {
+  padding: 0 0.15rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.td-copy:hover {
+  color: var(--accent-color);
+}
+
+.td-copy.is-copied {
+  color: var(--success-color);
+}
+
+/* ── Tab strip ──────────────────────────────────────────────────────────── */
+.td-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.td-tabstrip {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.td-tab {
+  padding: 0.5rem 1rem;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.td-tab.is-active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+.td-find {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+}
+
+.td-find input {
+  width: 220px;
+  height: 26px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.76rem;
+}
+
+.td-find input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.td-find-n {
+  min-width: 3.2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.td-find button {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.td-find button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.td-find button:hover:not(:disabled) {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.td-viewlogs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  color: var(--accent-color);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.td-viewlogs:hover {
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.td-viewlogs--head {
+  margin-left: 0.25rem;
+}
+
+/* ── Waterfall ──────────────────────────────────────────────────────────── */
+.td-wf {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.td-wf-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The operation column and the timeline share one grid definition, so the
+   header's axis ticks line up with the bars underneath them. Changing the
+   split in one place without the other is the classic way this drifts. */
+.td-wf-header,
+.td-row {
+  display: grid;
+  /* operation | request time | response time | timeline */
+  grid-template-columns: minmax(260px, 36%) 6.5rem 6.5rem minmax(0, 1fr);
+  align-items: center;
+}
+
+.td-wf-header {
+  flex-shrink: 0;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--company-bg);
+}
+
+.td-wf-oplabel {
+  padding-left: 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.td-wf-timelabel {
+  padding: 0 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Wall-clock request/response stamps. Mono so the digits line up row to row
+   and a glance down the column reads as a sequence. */
+.td-row-time {
+  padding: 0 0.5rem;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.td-axis {
+  position: relative;
+  height: 1.1rem;
+}
+
+.td-axis-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+/* The first and last ticks would otherwise hang off the plot edges. */
+.td-axis-tick:first-child {
+  transform: none;
+}
+
+.td-axis-tick:last-child {
+  transform: translateX(-100%);
+}
+
+.td-wf-rows {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.td-row {
+  min-height: 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.td-row:hover {
+  background: var(--hover-bg);
+}
+
+.td-row.is-selected {
+  background: var(--hover-bg);
+  box-shadow: inset 3px 0 0 var(--accent-color);
+}
+
+.td-row.is-match {
+  background: rgba(255, 202, 40, 0.1);
+}
+
+.td-row.is-error .td-row-name {
+  color: #ef5350;
+}
+
+.td-row-op {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding-right: 0.75rem;
+  font-size: 0.75rem;
+}
+
+.td-row-kids {
+  flex-shrink: 0;
+  min-width: 16px;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  text-align: center;
+}
+
+.td-row-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.td-row-svc {
+  flex-shrink: 0;
+  max-width: 12ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* One-letter span kind, matching the reference: s server, i internal,
+   c client, p producer, r consumer. */
+.td-kind {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  line-height: 14px;
+  text-align: center;
+}
+
+.td-kind--server {
+  color: #4dabf7;
+}
+
+.td-kind--client {
+  color: #ffa94d;
+}
+
+.td-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.td-http {
+  flex-shrink: 0;
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  background: rgba(56, 142, 60, 0.16);
+  color: #000000;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.td-http.is-bad {
+  background: rgba(211, 47, 47, 0.18);
+  color: #ffffff;
+}
+
+.td-row-track {
+  position: relative;
+  height: 20px;
+}
+
+.td-bar {
+  position: absolute;
+  top: 6px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0.9;
+}
+
+/* The duration sits OUTSIDE the bar: on a multi-second trace most spans are a
+   couple of pixels wide and a label inside would never be readable. */
+.td-bar-label {
+  position: absolute;
+  top: 3px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ── Span panel ─────────────────────────────────────────────────────────── */
+.td-span {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 clamp(420px, 46%, 900px);
+  min-height: 0;
+  border-left: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.td-span-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.td-span-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.td-span-x {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.td-span-x:hover {
+  color: var(--error-color);
+}
+
+.td-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  padding: 0.5rem 0.75rem;
+}
+
+.td-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  font-size: 0.72rem;
+}
+
+.td-chip-k {
+  color: var(--text-secondary);
+}
+
+.td-chip-v {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.td-span-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.td-span-tabs {
+  display: flex;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  padding: 0 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.td-span-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.7rem;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.td-span-tab.is-active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+.td-tab-n {
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  background: var(--hover-bg);
+  font-size: 0.6rem;
+}
+
+.td-mode {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  padding: 0.4rem 0.75rem;
+}
+
+.td-mode-btn {
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.td-mode-btn.is-active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+}
+
+.td-mode-spacer {
+  flex: 1;
+}
+
+.td-span-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 0.75rem 0.9rem;
+}
+
+.td-json {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.td-json-line {
+  display: grid;
+  grid-template-columns: 16px auto auto minmax(0, 1fr);
+  align-items: start;
+  padding-left: 0.4rem;
+}
+
+.td-json-caret {
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+}
+
+.td-json-val {
+  white-space: pre-wrap;
+  overflow-wrap: break-word; word-break: normal;
+}
+
+.td-kv-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.td-kv-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 240px) minmax(0, 1fr) auto;
+  gap: 0.6rem;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.td-kv-row:last-child {
+  border-bottom: none;
+}
+
+.td-kv-row:hover {
+  background: var(--hover-bg);
+}
+
+.td-kv-key {
+  color: #e06c75;
+  word-break: break-all;
+}
+
+.td-kv-val {
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: break-word; word-break: normal;
+}
+
+.td-sub {
+  margin-top: 0.5rem;
+}
+
+.td-sub-head {
+  padding: 0.2rem 0;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.td-sub-head--error {
+  color: #ef5350;
+}
+
+.td-empty {
+  padding: 1.5rem 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* ── Flame graph ────────────────────────────────────────────────────────── */
+.td-flame {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.75rem 1rem;
+}
+
+.td-flame-meta {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.td-flame-meta strong {
+  color: var(--text-primary);
+}
+
+.td-axis--flame {
+  margin-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.td-flame-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.td-flame-row {
+  position: relative;
+  height: 26px;
+}
+
+.td-flame-bar {
+  position: absolute;
+  top: 0;
+  height: 26px;
+  min-width: 2px;
+  border-radius: 3px;
+  overflow: hidden;
+  opacity: 0.92;
+  text-align: center;
+}
+
+.td-flame-bar:hover {
+  opacity: 1;
+  outline: 1px solid var(--text-primary);
+}
+
+.td-flame-bar.is-selected {
+  outline: 2px solid var(--accent-color);
+}
+
+/* Dark text: the bar colours are the light service palette, so white would be
+   unreadable on every one of them. */
+.td-flame-label {
+  display: block;
+  padding: 0 0.4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #08130f;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 26px;
+}
+
+/* ── Trace graph ────────────────────────────────────────────────────────── */
+.td-graph {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
+  gap: 1rem;
+  align-content: start;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.td-graph-services {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.td-node {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-left-width: 3px;
+  border-radius: 5px;
+  background: var(--surface-color);
+}
+
+.td-node-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.td-node-meta {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.td-node-err {
+  color: #ef5350;
+}
+
+.td-graph-edges h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.td-edge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.78rem;
+}
+
+.td-edge-arrow {
+  color: var(--text-secondary);
+}
+
+.td-edge-n {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 1100px) {
+  .td-wf {
+    flex-direction: column;
+  }
+
+  .td-span {
+    flex-basis: 45%;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .td-graph {
+    grid-template-columns: 1fr;
+  }
+}

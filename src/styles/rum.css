@@ -1,0 +1,653 @@
+/* ===========================================================================
+   Real User Monitoring.
+
+   Full-screen by construction: a flex column that owns the content area, with only
+   the tables scrolling. That keeps the filters, the tab strip and the summary tiles
+   permanently visible, which is the point of a monitoring screen — the numbers you
+   are comparing against must not scroll away from the rows you are comparing.
+
+   No new palette. Ratings and error tones read the --sev-* severity scale defined
+   in index.css, so a "poor" vital and an ERROR log line are the same red. The whole
+   reason that scale exists is that an operator crossing between screens should not
+   have to relearn what a colour means.
+   =========================================================================== */
+
+.rum-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.rum-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rum-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.rum-subtitle {
+  margin: 0.15rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+
+.rum-tabs {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.rum-tab {
+  padding: 0.45rem 0.9rem;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  /* The active marker is a bottom border on the tab itself, so the strip has no
+     layout shift between states — a border that appears would move every label. */
+  border-bottom: 2px solid transparent;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.rum-tab:hover {
+  color: var(--text-primary);
+}
+
+.rum-tab.is-active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+.rum-subtabs {
+  display: flex;
+  gap: 0.2rem;
+  margin: 0.25rem 0 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.rum-subtab {
+  padding: 0.35rem 0.7rem;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rum-subtab:hover { color: var(--text-primary); }
+
+.rum-subtab.is-active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.rum-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rum-toolbar-hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  max-width: 46ch;
+}
+
+.rum-toolbar-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rum-select-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.rum-select-wrap.is-disabled { opacity: 0.55; }
+
+.rum-select-label {
+  color: var(--text-secondary);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.rum-select {
+  min-width: 128px;
+  padding: 0.35rem 0.5rem;
+  color: var(--text-primary);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+}
+
+.rum-select:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+.rum-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  color: var(--text-primary);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rum-refresh-btn:hover {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+/* ── Body / panels ───────────────────────────────────────────────────────── */
+
+.rum-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.rum-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 0.6rem;
+}
+
+.rum-panel-head { display: flex; justify-content: space-between; gap: 1rem; }
+
+.rum-panel-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.rum-panel-sub {
+  margin: 0.1rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.rum-section-title {
+  margin: 0.5rem 0 0.1rem;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.rum-section-note {
+  margin: 0 0 0.3rem;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  max-width: 88ch;
+}
+
+.rum-section-note--span { grid-column: 1 / -1; }
+
+/* ── Tiles ───────────────────────────────────────────────────────────────── */
+
+.rum-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.5rem;
+}
+
+.rum-tiles--wide { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.rum-tiles--stack { grid-template-columns: 1fr; align-content: start; }
+
+.rum-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.rum-tile-label {
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rum-tile-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.rum-tile.is-big .rum-tile-value { font-size: 1.6rem; }
+
+.rum-tile-foot {
+  color: var(--text-secondary);
+  font-size: 0.64rem;
+}
+
+/* Tone is a left edge PLUS the figure, the same grammar Analytics uses: the
+   edge says which tile, the coloured figure says it needs attention. Ratings map
+   onto the shared severity scale rather than inventing a second set of reds. */
+.rum-tile--good    { box-shadow: inset 3px 0 0 var(--success-color); }
+.rum-tile--warn    { box-shadow: inset 3px 0 0 var(--sev-warn); }
+.rum-tile--error   { box-shadow: inset 3px 0 0 var(--sev-error); }
+.rum-tile--poor    { box-shadow: inset 3px 0 0 var(--sev-error); }
+.rum-tile--needs-improvement { box-shadow: inset 3px 0 0 var(--sev-warn); }
+
+.rum-tile--warn .rum-tile-value  { color: var(--sev-warn); }
+.rum-tile--error .rum-tile-value { color: var(--sev-error); }
+.rum-tile--poor .rum-tile-value  { color: var(--sev-error); }
+.rum-tile--needs-improvement .rum-tile-value { color: var(--sev-warn); }
+.rum-tile--good .rum-tile-value  { color: var(--success-color); }
+
+/* ── Overview columns ────────────────────────────────────────────────────── */
+
+.rum-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.rum-column { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+
+.rum-column-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.rum-column-body { display: flex; flex-direction: column; gap: 0.5rem; }
+
+/* ── Chips ───────────────────────────────────────────────────────────────── */
+
+.rum-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.rum-chips-label {
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.rum-chips-note {
+  margin-left: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.64rem;
+  font-style: italic;
+}
+
+.rum-chip {
+  padding: 0.2rem 0.55rem;
+  color: var(--text-secondary);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rum-chip:hover { color: var(--text-primary); }
+
+.rum-chip.is-active {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+  background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────────── */
+
+.rum-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.rum-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.rum-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.5rem 0.6rem;
+  color: var(--text-secondary);
+  background: var(--company-bg);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.rum-table tbody td {
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  vertical-align: top;
+}
+
+.rum-table tbody tr:hover { background: var(--hover-bg); }
+
+/* Severity from the row's left edge, matching the logs list so the same signal
+   means the same thing on both screens. */
+.rum-table tbody tr.is-errored { box-shadow: inset 3px 0 0 var(--sev-error); }
+
+.rum-num {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rum-num--error { color: var(--sev-error); }
+
+.rum-cell-strong { display: block; color: var(--text-primary); font-weight: 600; }
+
+.rum-cell-sub {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
+}
+
+.rum-cell-url {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  max-width: 42ch;
+  overflow-wrap: anywhere;
+}
+
+.rum-cell-issue { max-width: 70ch; }
+
+.rum-issue-msg {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.rum-issue-type { color: var(--sev-error); }
+
+.rum-issue-src {
+  padding: 0.05rem 0.3rem;
+  margin-right: 0.35rem;
+  background: var(--company-bg);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+}
+
+.rum-issue-svc { color: var(--text-secondary); }
+
+/* ── Badges and pills ────────────────────────────────────────────────────── */
+
+.rum-badge,
+.rum-pill {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  margin-right: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.rum-badge--muted { color: var(--text-secondary); }
+
+.rum-pill--ok {
+  color: var(--success-color);
+  border-color: var(--success-color);
+  background: color-mix(in srgb, var(--success-color) 10%, transparent);
+}
+
+.rum-pill--warn {
+  color: var(--sev-warn);
+  border-color: var(--sev-warn);
+  background: color-mix(in srgb, var(--sev-warn) 10%, transparent);
+}
+
+.rum-pill--error {
+  color: var(--sev-error);
+  border-color: var(--sev-error);
+  background: color-mix(in srgb, var(--sev-error) 10%, transparent);
+}
+
+/* ── Error chart ─────────────────────────────────────────────────────────── */
+
+.rum-error-top {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+.rum-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.rum-chart--empty {
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  min-height: 140px;
+}
+
+.rum-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.rum-chart-legend { display: flex; gap: 0.6rem; }
+
+.rum-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 500;
+}
+
+.rum-swatch { width: 9px; height: 9px; border-radius: 2px; }
+.rum-swatch--handled { background: var(--sev-warn); }
+.rum-swatch--unhandled { background: var(--sev-error); }
+
+/* preserveAspectRatio="none" on the SVG: the bar chart is scaled to the panel
+   width and the bar heights carry the meaning, so distorting the aspect is
+   correct here rather than letterboxing a fixed-ratio plot. */
+.rum-chart-svg { width: 100%; height: 120px; display: block; }
+
+.rum-bar--handled { fill: var(--sev-warn); }
+.rum-bar--unhandled { fill: var(--sev-error); }
+
+.rum-chart-foot { color: var(--text-secondary); font-size: 0.64rem; }
+
+/* ── States ──────────────────────────────────────────────────────────────── */
+
+.rum-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.rum-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: rum-spin 700ms linear infinite;
+}
+
+@keyframes rum-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rum-spinner { animation: none; }
+}
+
+.rum-banner {
+  padding: 0.5rem 0.7rem;
+  border-radius: 5px;
+  border: 1px solid var(--border-color);
+  font-size: 0.74rem;
+}
+
+.rum-banner--error {
+  color: var(--sev-error);
+  border-color: var(--sev-error);
+  background: color-mix(in srgb, var(--sev-error) 8%, transparent);
+}
+
+.rum-banner--warn {
+  color: var(--sev-warn);
+  border-color: var(--sev-warn);
+  background: color-mix(in srgb, var(--sev-warn) 8%, transparent);
+}
+
+.rum-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 2rem 0.75rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  max-width: 76ch;
+}
+
+.rum-empty-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.rum-empty-note { color: var(--text-secondary); font-size: 0.7rem; }
+
+/* ── Footer / pager ──────────────────────────────────────────────────────── */
+
+.rum-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.rum-foot-note {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  max-width: 90ch;
+}
+
+.rum-pager { display: flex; gap: 0.35rem; }
+
+.rum-page-btn {
+  padding: 0.25rem 0.6rem;
+  color: var(--text-primary);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.rum-page-btn:hover:not(:disabled) {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.rum-page-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ── Narrow viewports ────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  /* The chart and its tiles stop competing for width and stack instead — at this
+     size a 220px tile column leaves the chart too narrow to read. */
+  .rum-error-top { grid-template-columns: 1fr; }
+  .rum-toolbar { align-items: stretch; }
+}

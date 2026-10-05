@@ -1,0 +1,1818 @@
+/* ==========================================================================
+   Logs — toolbar, query editor, time range, refresh interval, sidebar footer.
+
+   Split out of index.css rather than appended to it: index.css is already
+   ~6.7k lines, and this is one self-contained screen's chrome. Imported from
+   the top of index.css so the cascade order is unchanged.
+
+   Note: the older logs toolbar rules still in index.css (.logview-toggle,
+   .live-tail-btn, .time-preset-*, .severity-*, .log-line, .log-lv) are now
+   unreachable from this screen but are deliberately left there —
+   .filters-panel, .date-filter-group and .log-list are still used by the
+   Traces screens, and picking them apart is a separate change from this one.
+   ========================================================================== */
+
+.logs-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.25rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.tb-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-right: 0.5rem;
+  border-right: 1px solid var(--border-color);
+}
+
+.tb-spacer {
+  flex: 1 1 auto;
+}
+
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.tb-btn:hover,
+.tb-btn.is-open {
+  color: var(--accent-color);
+  background: var(--hover-bg);
+  border-color: var(--border-color);
+}
+
+.tb-btn.is-active {
+  color: var(--accent-color);
+  background: var(--hover-bg);
+  border-color: var(--accent-color);
+}
+
+/* SQL mode switch — a real track-and-thumb rather than another icon button,
+   because it is the one control here that changes how the editor is read. */
+.tb-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 26px;
+  padding: 0 0.5rem;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.tb-switch:hover {
+  background: var(--hover-bg);
+}
+
+.tb-switch.is-on {
+  color: var(--accent-color);
+}
+
+.tb-switch-track {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--border-color);
+  transition: background 140ms ease;
+}
+
+.tb-switch.is-on .tb-switch-track {
+  background: var(--accent-color);
+}
+
+.tb-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface-color);
+  transition: transform 140ms ease;
+}
+
+.tb-switch.is-on .tb-switch-thumb {
+  transform: translateX(14px);
+}
+
+.tb-run {
+  height: 26px;
+  padding: 0 0.8rem;
+  border-radius: 5px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: filter 120ms ease, box-shadow 120ms ease;
+}
+
+.tb-run:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+.tb-run:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Unrun edits: this button is the only place that can say "what you are
+   looking at is not what you typed", so it says it. */
+.tb-run.is-dirty {
+  box-shadow: 0 0 0 2px rgba(255, 202, 40, 0.55);
+}
+
+/* ── Toolbar popovers ───────────────────────────────────────────────────── */
+.tb-pop {
+  position: relative;
+  display: inline-flex;
+}
+
+.tb-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 190px;
+  padding: 0.3rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.tb-menu--wide {
+  min-width: 260px;
+}
+
+.tb-menu-head {
+  padding: 0.35rem 0.5rem 0.2rem;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.tb-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.3rem;
+}
+
+.tb-menu-row input {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.75rem;
+}
+
+.tb-menu-row input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.tb-menu-primary {
+  height: 26px;
+  padding: 0 0.6rem;
+  border-radius: 4px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.tb-menu-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tb-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  text-align: left;
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb-menu-item:hover {
+  background: var(--hover-bg);
+  color: var(--accent-color);
+}
+
+.tb-menu-row--saved {
+  padding: 0 0.3rem;
+}
+
+.tb-menu-del {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.tb-menu-del:hover {
+  color: var(--error-color);
+  background: var(--hover-bg);
+}
+
+.tb-menu-empty {
+  padding: 0.4rem 0.5rem 0.6rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-style: italic;
+}
+
+/* ── Time range picker ──────────────────────────────────────────────────── */
+.trp {
+  position: relative;
+}
+
+.trp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 26px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.trp-btn:hover,
+.trp-btn.is-open {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.trp-caret {
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+}
+
+.trp-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  width: 320px;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.trp-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.trp-tab {
+  padding: 0.35rem 0.7rem;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.trp-tab.is-active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+.trp-group {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.trp-group-label {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+.trp-group-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.25rem;
+}
+
+.trp-preset {
+  height: 26px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.trp-preset:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.trp-preset.is-active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+  font-weight: 600;
+}
+
+.trp-absolute {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.trp-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+}
+
+.trp-field span {
+  flex-shrink: 0;
+  width: 40px;
+}
+
+.trp-field input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.74rem;
+  color-scheme: dark;
+}
+
+.trp-absolute-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.trp-clear,
+.trp-apply {
+  height: 28px;
+  padding: 0 0.75rem;
+  border-radius: 4px;
+  font-size: 0.74rem;
+}
+
+.trp-clear {
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.trp-clear:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.trp-apply {
+  background: var(--accent-color);
+  color: #fff;
+  font-weight: 600;
+}
+
+.trp-apply:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.trp-note {
+  margin: 0;
+  font-size: 0.66rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* ── Refresh interval ───────────────────────────────────────────────────── */
+.rip {
+  position: relative;
+  display: inline-flex;
+}
+
+.rip-value {
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rip-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 110px;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/*
+ * Why polling is asleep, inside the menu where there is room for a sentence.
+ *
+ * Wraps rather than truncating: the text names the fix ("pick a relative range"),
+ * so clipping it would leave only the complaint. The menu widens for it.
+ */
+.rip-note {
+  max-width: 15rem;
+  padding: 0.3rem 0.5rem 0.4rem;
+  margin-bottom: 0.2rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--warn-color);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+/*
+ * An interval is set but nothing is polling. Amber matches .rip-note, and keeps
+ * the button distinct from both is-active (accent: polling) and plain (off) — the
+ * three states are genuinely different and a viewer has to tell them apart at a
+ * glance.
+ *
+ * The BORDER has to be overridden too, not only the text. `.is-active` sets
+ * `border-color: var(--accent-color)` and both selectors have equal specificity,
+ * so leaving the border alone would paint amber text inside the accent outline
+ * that means "running" — the one reading this state must not have.
+ *
+ * Declared AFTER `.is-active` deliberately: equal specificity means source order
+ * decides the winner. Do not move it above.
+ */
+.tb-btn.is-paused,
+.tb-btn.is-paused .rip-value {
+  color: var(--warn-color);
+  border-color: var(--warn-color);
+}
+
+.rip-item {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  text-align: left;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+}
+
+.rip-item:hover {
+  background: var(--hover-bg);
+  color: var(--accent-color);
+}
+
+.rip-item.is-active {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+/* ── Query editor ───────────────────────────────────────────────────────── */
+.qe {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-color);
+}
+
+.qe--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg-color);
+}
+
+.qe--fullscreen .qe-body {
+  flex: 1;
+}
+
+.qe--fullscreen .qe-input {
+  max-height: none;
+}
+
+.qe-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.2rem 0.6rem;
+}
+
+.qe-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.qe-title:hover {
+  color: var(--accent-color);
+}
+
+.qe-chevron {
+  display: inline-block;
+  color: var(--text-secondary);
+  transition: transform 140ms ease;
+}
+
+.qe-chevron--open {
+  transform: rotate(90deg);
+}
+
+.qe-collapsed-preview {
+  margin-left: 0.5rem;
+  max-width: 60ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+}
+
+.qe-mode {
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.qe-mode.is-sql {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.qe-hint {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+}
+
+.qe-expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.qe-expand:hover {
+  color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.qe-body {
+  display: flex;
+  align-items: stretch;
+  margin: 0 0.6rem 0.35rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  overflow: hidden;
+}
+
+.qe-gutter {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 30px;
+  padding: 0.3rem 0.35rem 0.3rem 0;
+  border-right: 1px solid var(--border-color);
+  overflow: hidden;
+  text-align: right;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.55;
+  user-select: none;
+}
+
+.qe-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.7em;
+  max-height: 30vh;
+  padding: 0.3rem 0.55rem;
+  border: none;
+  outline: none;
+  resize: vertical;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.55;
+  /* The gutter counts wrapped lines as one, so wrapping would desync the two.
+     Long queries scroll horizontally instead. */
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+
+.qe-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.qe-msg {
+  margin: 0 0.6rem 0.35rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.qe-msg--error {
+  border-left: 3px solid var(--error-color);
+  background: rgba(211, 47, 47, 0.12);
+  color: var(--text-primary);
+}
+
+.qe-msg--warn {
+  border-left: 3px solid #ffca28;
+  background: rgba(255, 202, 40, 0.1);
+  color: var(--text-secondary);
+  list-style: none;
+}
+
+.qe-msg--warn li + li {
+  margin-top: 0.2rem;
+}
+
+/* ── Sidebar: stream selector + field pager ─────────────────────────────── */
+.fieldbar-stream {
+  width: 100%;
+  height: 32px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.fieldbar-stream:hover {
+  border-color: var(--accent-color);
+}
+
+.fieldbar-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.25rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.fieldbar-foot-btn,
+.fieldbar-foot-page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 0.25rem;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fieldbar-foot-btn:hover:not(:disabled),
+.fieldbar-foot-page:hover {
+  color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.fieldbar-foot-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.fieldbar-foot-page.is-current {
+  background: var(--accent-color);
+  color: #fff;
+  font-weight: 600;
+}
+
+.fieldbar-foot-refresh {
+  margin-left: 0.3rem;
+}
+
+/* ── Empty / error state ────────────────────────────────────────────────── */
+.log-empty {
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+}
+
+.log-empty-error {
+  color: var(--error-color);
+}
+
+.log-empty-error p + p {
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* ── Service multi-select (Logs + Traces sidebars) ──────────────────────── */
+.sms {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sms-label {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.sms-face {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  height: 30px;
+  padding: 0 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  text-align: left;
+}
+
+.sms-face:hover,
+.sms-face.is-open {
+  border-color: var(--accent-color);
+}
+
+.sms-face.has-value {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.sms-face-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sms-clear,
+.sms-caret {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.sms-clear {
+  padding: 0 0.15rem;
+  border-radius: 3px;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sms-clear:hover {
+  color: var(--error-color);
+  background: var(--hover-bg);
+}
+
+.sms-caret {
+  font-size: 0.6rem;
+}
+
+.sms-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.sms-search {
+  padding: 0.35rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sms-search input {
+  width: 100%;
+  height: 26px;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.75rem;
+}
+
+.sms-search input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.sms-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.25rem 0.45rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sms-count {
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+}
+
+.sms-link {
+  color: var(--accent-color);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.sms-link:hover {
+  text-decoration: underline;
+}
+
+/* Capped so a 100+ service list scrolls inside the popover rather than
+   running off the bottom of the viewport. */
+.sms-list {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 0.2rem;
+}
+
+.sms-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  cursor: pointer;
+}
+
+.sms-item:hover {
+  background: var(--hover-bg);
+}
+
+.sms-item.is-on {
+  color: var(--accent-color);
+}
+
+.sms-item input {
+  flex-shrink: 0;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.sms-item-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sms-empty {
+  padding: 0.5rem 0.45rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-style: italic;
+}
+
+/* Per-service log count in the service dropdown, e.g. "OrderService  18.2K". */
+.sms-item-count {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding-left: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.sms-item.is-on .sms-item-count {
+  color: var(--accent-color);
+}
+
+/* Keyboard cursor — distinct from hover so arrowing through the list is
+   visible even while the pointer sits elsewhere. */
+.sms-item.is-cursor {
+  background: var(--hover-bg);
+  box-shadow: inset 2px 0 0 var(--accent-color);
+}
+
+/* ==========================================================================
+   Source Details modal — the full record, opened by clicking a log row.
+   ========================================================================== */
+
+.ld-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* Near-full width, matching the reference: a k8s-annotated record has 25+
+   fields and a body that runs to several lines, so a narrow drawer would
+   spend its height on wrapping rather than on content. */
+.ld-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(1500px, 92vw);
+  height: 100%;
+  background: var(--bg-color);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.5);
+}
+
+.ld-head {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.9rem 1.25rem 0.7rem;
+}
+
+.ld-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ld-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.ld-close:hover,
+.ld-close:focus-visible {
+  color: var(--text-primary);
+  background: var(--hover-bg);
+  outline: none;
+}
+
+.ld-tabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  padding: 0 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ld-tab {
+  padding: 0.45rem 1.1rem;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.ld-tab.is-active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.ld-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.5rem 1.25rem;
+}
+
+.ld-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.ld-copy:hover {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.ld-copy.is-copied {
+  color: var(--success-color);
+  border-color: var(--success-color);
+}
+
+.ld-find {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 260px;
+  max-width: 40vw;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+}
+
+.ld-find:focus-within {
+  border-color: var(--accent-color);
+}
+
+.ld-find input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.76rem;
+}
+
+.ld-find-x {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.ld-pos {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Open trace →" in the Source Details toolbar. Sits to the right of the record
+   counter, which is what owns the toolbar's auto margin — see the note at the
+   call site for why the order matters. */
+.ld-opentrace {
+  margin-left: 0.2rem;
+  white-space: nowrap;
+  background: none;
+  cursor: pointer;
+}
+
+.ld-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.5rem 1.25rem 1rem;
+}
+
+/* ── JSON view ──────────────────────────────────────────────────────────── */
+.ld-json {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.ld-json-line {
+  display: grid;
+  grid-template-columns: 18px auto auto minmax(0, 1fr);
+  align-items: start;
+  padding-left: 0.5rem;
+  border-radius: 3px;
+}
+
+.ld-json-line.is-match {
+  background: rgba(255, 202, 40, 0.14);
+}
+
+.ld-json-caret {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  line-height: 1.65;
+  text-align: left;
+}
+
+.ld-json-caret.is-static {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Long bodies and stack traces keep their newlines and wrap inside the value
+   column, rather than forcing the dialog to scroll sideways. */
+.ld-json-value {
+  white-space: pre-wrap;
+  overflow-wrap: break-word; word-break: normal;
+}
+
+/* ── Table view ─────────────────────────────────────────────────────────── */
+.ld-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ld-tr {
+  display: grid;
+  grid-template-columns: minmax(160px, 260px) minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+
+.ld-tr:last-child { border-bottom: none; }
+.ld-tr:hover { background: var(--hover-bg); }
+
+.ld-td-key {
+  color: #e06c75;
+  word-break: break-all;
+}
+
+.ld-td-val {
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: break-word; word-break: normal;
+}
+
+.ld-tr .ld-copy {
+  padding: 0.05rem 0.3rem;
+  border-color: transparent;
+}
+
+.ld-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.ld-foot {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.7rem 1.25rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.ld-nav {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ld-nav:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.ld-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ld-around {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+
+.ld-around-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ld-around-label select {
+  height: 28px;
+  padding: 0 0.35rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.ld-around-btn {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ld-around-btn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+@media (max-width: 900px) {
+  .ld-dialog { width: 100vw; }
+  .ld-tr { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── Product picker (logs scope panel) ──────────────────────────────────── */
+.prod {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.prod-face {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  height: 30px;
+  padding: 0 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  text-align: left;
+}
+
+.prod-face:hover,
+.prod-face.is-open {
+  border-color: var(--accent-color);
+}
+
+.prod-face.has-value {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.prod-face-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prod-clear,
+.prod-caret {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.prod-clear {
+  padding: 0 0.15rem;
+  border-radius: 3px;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.prod-clear:hover {
+  color: var(--error-color);
+  background: var(--hover-bg);
+}
+
+.prod-caret { font-size: 0.6rem; }
+
+.prod-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 46;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.prod-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.prod-item:hover { background: var(--hover-bg); }
+.prod-item.is-active { background: var(--hover-bg); }
+.prod-item.is-active .prod-item-name { color: var(--accent-color); }
+
+.prod-item-name {
+  color: var(--text-primary);
+  font-size: 0.79rem;
+  font-weight: 600;
+}
+
+.prod-item-desc,
+.prod-item-sub {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+}
+
+.prod-item-sub { font-variant-numeric: tabular-nums; }
+
+.prod-note {
+  padding: 0.4rem 0.5rem;
+  border-top: 1px solid var(--border-color);
+  margin-top: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  line-height: 1.35;
+}
+
+/* Coverage list under the picker. */
+.prod-services {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0;
+  padding: 0.3rem 0.15rem 0;
+  list-style: none;
+  border-top: 1px dashed var(--border-color);
+}
+
+.prod-service {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.08rem 0.3rem;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.67rem;
+  color: var(--text-secondary);
+}
+
+.prod-service-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prod-service-count {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A declared service with no matching service_name. Called out rather than
+   omitted: silently missing and simply quiet look identical otherwise. */
+.prod-service.is-missing {
+  color: #ffa726;
+  opacity: 0.85;
+}
+
+.prod-service.is-missing .prod-service-count {
+  font-style: italic;
+}
+
+/* Environment tag on a product service that isn't the default deployment. */
+.prod-service-env {
+  flex-shrink: 0;
+  padding: 0 0.3rem;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
+}
+
+/* Brand tag in the product menu — several products share "trinityIoT", so the
+   family is shown alongside the distinguishing name rather than instead of it. */
+.prod-item-family {
+  display: inline-block;
+  margin-right: 0.35rem;
+  padding: 0 0.28rem;
+  border-radius: 3px;
+  background: var(--hover-bg);
+  color: var(--accent-color);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
+}
+
+/* ── Category tree (top of the field list) ──────────────────────────────── */
+
+/* One rule under the whole block, not under each category. The separator used
+   to live on .pt-root, which was fine when there was a single "products" row;
+   with six categories it drew six lines and read as six unrelated sections. */
+.pt-tree {
+  margin-bottom: 0.25rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Categories with nothing registered yet are kept visible but recede, so the
+   taxonomy is legible without the empty rows competing with the real ones. */
+.pt-root.is-empty .fieldbar-field-name { color: var(--text-secondary); }
+
+/* Category row: a "select all" checkbox beside the expander.
+   The checkbox is a SIBLING of the button, not a child — an <input> inside a
+   <button> is invalid HTML and the click gets swallowed by the button. */
+.pt-cat-head {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding-left: 0.3rem;
+}
+
+.pt-cat-head:hover { background: var(--hover-bg); }
+
+/* The expander takes the rest of the row so the whole label stays clickable. */
+.pt-cat-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.pt-cat-head:hover .fieldbar-field-head { background: none; }
+
+.pt-note {
+  padding: 0.2rem 0.3rem 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-style: italic;
+}
+
+.pt-note--warn {
+  color: #ffa726;
+  font-style: normal;
+}
+
+.pt-products {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  padding: 0.1rem 0 0.15rem 0.55rem;
+}
+
+.pt-product-head:hover { background: var(--hover-bg); }
+
+.pt-caret {
+  flex-shrink: 0;
+  width: 14px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  line-height: 1;
+  text-align: left;
+}
+
+.pt-check,
+.pt-service input {
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.pt-check:disabled,
+.pt-service input:disabled { cursor: not-allowed; opacity: 0.4; }
+
+.pt-product-name:hover { color: var(--accent-color); }
+
+.pt-count {
+  flex-shrink: 0;
+  min-width: 1.4rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* Indented under its product, with a rule marking the nesting so a long
+   service list doesn't lose its parent. */
+.pt-services {
+  display: flex;
+  flex-direction: column;
+  gap: 0.02rem;
+  margin-left: 0.75rem;
+  padding-left: 0.4rem;
+  border-left: 1px solid var(--border-color);
+}
+
+/* Registered resources hang directly off their category — there is no product
+   tier any more. Indented enough to line their checkbox up under the category's
+   (caret 14px + the head's 0.3rem gap). */
+.pt-services--direct {
+  margin-left: 0;
+  padding-left: calc(14px + 0.3rem);
+  border-left: none;
+}
+
+/* ── The product tier ──────────────────────────────────────────────────────────
+   Category → PRODUCT → microservice. Only products holding a registration are
+   rendered, so this level appears exactly where it carries information and the
+   four categories without a product list are untouched. */
+.pt-product {
+  margin-left: calc(14px + 0.3rem);
+}
+
+.pt-product-head {
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.2rem;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* The product labels are long ("trinityIoT - GIS Integration with 3D Engine") and
+   the rail is narrow, so the name truncates rather than wrapping to three lines
+   and pushing the services it contains off screen. The full label is the title. */
+.pt-product-name {
+  flex: 1;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pt-service {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.12rem 0.3rem;
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.pt-service:hover { background: var(--hover-bg); }
+.pt-service.is-on { color: var(--accent-color); }
+
+.pt-service.is-absent { cursor: not-allowed; }
+
+/* Declared in the registry and confirmed absent from telemetry — shown, not
+   hidden, so a stale mapping is visible rather than looking like a quiet
+   service. Only used when discovery actually answered. */
+.pt-service.is-missing {
+  color: #ffa726;
+  opacity: 0.8;
+}
+
+/* Discovery hasn't answered, so we can't claim the service is absent. Grey,
+   not orange: the amber above is an assertion about the data, and making it
+   while blind is how a correct mapping came to look broken. */
+.pt-service.is-unknown {
+  color: var(--text-secondary);
+  opacity: 0.55;
+}
+
+/* DISABLED in the Product Catalog. Distinct from is-missing on purpose: that
+   one means "we looked and found no telemetry", this one means "an operator
+   switched it off". The two call for opposite actions — widen your time range,
+   versus go and enable it — so they must not look the same. Struck through
+   because the row is inert. */
+.pt-service.is-off-catalog {
+  color: var(--text-secondary);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pt-service.is-off-catalog .pt-service-name { text-decoration: line-through; }
+
+.pt-off-tag {
+  flex-shrink: 0;
+  padding: 0 0.25rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--error-color) 20%, transparent);
+  color: #ef5350;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Inline "Open Product Catalog" inside an empty-category note. */
+.pt-note-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-color);
+  font: inherit;
+  font-style: normal;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.pt-note-link:hover { color: var(--text-primary); }
+
+.pt-service-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pt-env {
+  flex-shrink: 0;
+  padding: 0 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  font-size: 0.55rem;
+}
+
+.pt-service-count {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 0.63rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── service.name value list: every discovered service, with checkboxes ─── */
+.fieldbar-values--services {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fb-svc-filter {
+  width: 100%;
+  height: 24px;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.7rem;
+}
+
+.fb-svc-filter:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+/* Scrolls instead of truncating: "+6 more values" is useless when the service
+   you need is one of the 6. */
+.fb-svc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.02rem;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.fb-svc {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.fb-svc:hover { background: var(--hover-bg); }
+.fb-svc.is-on { color: var(--accent-color); }
+
+.fb-svc input {
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.fb-svc-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fb-svc-n {
+  flex-shrink: 0;
+  font-size: 0.63rem;
+  font-variant-numeric: tabular-nums;
+}

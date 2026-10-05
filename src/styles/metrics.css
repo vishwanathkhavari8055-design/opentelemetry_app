@@ -1,0 +1,1146 @@
+/* ── Metrics explorer ─────────────────────────────────────────────────────
+   Reuses the Logs/Traces vocabulary — same surfaces, borders and type scale —
+   so the screen reads as part of the same product rather than a bolted-on
+   page. Only the pieces with no existing equivalent are defined here. */
+
+.metrics-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+/* ── Sub-tabs (Explorer / Summary) ─────────────────────────────────────── */
+
+.mv-tabs {
+  display: flex;
+  gap: 0.15rem;
+  flex-shrink: 0;
+  padding: 0 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.mv-tab {
+  padding: 0.45rem 0.85rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mv-tab:hover { color: var(--text-primary); }
+
+.mv-tab.is-active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+}
+
+.mv-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Metric catalogue ──────────────────────────────────────────────────── */
+
+.mv-catalog {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 290px;
+  min-height: 0;
+  border-right: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.mv-catalog-head {
+  flex-shrink: 0;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.mv-catalog-search {
+  width: 100%;
+  height: 28px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.75rem;
+}
+
+.mv-catalog-search:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.mv-catalog-count {
+  margin-top: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mv-catalog-error {
+  margin: 0.5rem 0.6rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #ffa726;
+  border-radius: 4px;
+  color: #ffa726;
+  font-size: 0.7rem;
+}
+
+.mv-catalog-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.25rem 0.35rem 0.75rem;
+}
+
+.mv-catalog-empty {
+  padding: 1rem 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.mv-metric {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.2rem 0.35rem;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mv-metric:hover { background: var(--hover-bg); }
+.mv-metric.is-on { background: var(--hover-bg); color: var(--accent-color); }
+
+.mv-metric-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Type badge. Colour-coded because the distinction that matters most —
+   counter vs gauge — decides whether the query needs rate(). */
+.mv-metric-type {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  color: #0b0e14;
+  font-family: var(--font-sans);
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
+.mv-metric-type.is-counter   { background: #ffa726; }
+.mv-metric-type.is-gauge     { background: #2ecc9b; }
+.mv-metric-type.is-histogram { background: #a78bfa; }
+.mv-metric-type.is-summary   { background: #4dd0e1; }
+.mv-metric-type.is-unknown   { background: var(--border-color); color: var(--text-secondary); }
+
+.mv-catalog-more {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.3rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.mv-catalog-more:hover { color: var(--accent-color); border-color: var(--accent-color); }
+
+/* ── Source facets ─────────────────────────────────────────────────────────
+   The catalogue is 3,000+ names from five unrelated populations, so the group
+   filter is the first control on the screen — above the search box, because
+   searching an unsegregated list is the problem it exists to solve.
+
+   Laid out as a vertical list rather than wrapping chips: the labels are
+   phrases ("Middleware & data stores"), the counts are the interesting part,
+   and a column keeps them aligned in a 290px rail where chips would ragged. */
+
+.mv-facets {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 0.4rem;
+}
+
+.mv-facet {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.22rem 0.4rem;
+  border: none;
+  /* The 2px rail carries the group's colour; transparent until the group has
+     one, so "All" and the coloured rows still align on the same left edge. */
+  border-left: 2px solid transparent;
+  border-radius: 0 3px 3px 0;
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mv-facet:hover { background: var(--hover-bg); color: var(--text-primary); }
+
+.mv-facet.is-on {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.mv-facet-count {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 0.64rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* One colour per group, reused by the list headings and the provenance badge
+   so a metric's origin looks the same everywhere it is named. */
+.mv-facet.is-microservice  { border-left-color: #2ecc9b; }
+.mv-facet.is-middleware    { border-left-color: #ffa726; }
+.mv-facet.is-platform      { border-left-color: #a78bfa; }
+.mv-facet.is-observability { border-left-color: #4dd0e1; }
+.mv-facet.is-runtime       { border-left-color: #8b93a7; }
+.mv-facet.is-other         { border-left-color: var(--border-color); }
+
+/* Technology chips — only shown once a group is picked, where the count is
+   small enough to wrap without becoming a wall. */
+.mv-subfacets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-bottom: 0.4rem;
+}
+
+.mv-subfacet {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.12rem 0.35rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.64rem;
+  cursor: pointer;
+}
+
+.mv-subfacet:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+
+.mv-subfacet.is-on {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.mv-subfacet-count {
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mv-facet-hint {
+  margin: 0 0 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.63rem;
+  line-height: 1.35;
+}
+
+/* Technology heading inside the list. Sticky, because the whole point is to
+   know which population you are scrolling through. */
+.mv-group-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0.4rem 0 0.15rem;
+  padding: 0.15rem 0.35rem 0.15rem 0.4rem;
+  border-left: 2px solid var(--border-color);
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.mv-group-head:first-child { margin-top: 0; }
+
+.mv-group-head.is-microservice  { border-left-color: #2ecc9b; }
+.mv-group-head.is-middleware    { border-left-color: #ffa726; }
+.mv-group-head.is-platform      { border-left-color: #a78bfa; }
+.mv-group-head.is-observability { border-left-color: #4dd0e1; }
+.mv-group-head.is-runtime       { border-left-color: #8b93a7; }
+
+/* ── Provenance of the selected metric ─────────────────────────────────────
+   Two different facts on one line: the badge is where the metric NAME comes
+   from (classified server-side), the chips are the services whose DATA is in
+   it (read from the series). They disagree for every shared metric, which is
+   exactly why both are shown. */
+
+/* How a drilled query got here.
+   Above the provenance strip and visually louder than it: provenance describes
+   the metric, this describes the QUERY — and it is the only thing on screen that
+   distinguishes "the exact series that fired" from "the metric it was about". */
+.mv-drill-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  margin-bottom: 0.35rem;
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--accent-color, #4c8fff);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+.mv-drill-note-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mv-drill-note-x {
+  flex-shrink: 0;
+  padding: 0 0.2rem;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mv-drill-note-x:hover {
+  color: var(--text-primary);
+}
+
+.mv-provenance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.4rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  font-size: 0.68rem;
+}
+
+.mv-prov-badge {
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  background: var(--border-color);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.63rem;
+  font-weight: 700;
+}
+
+.mv-prov-badge.is-microservice  { background: rgba(46, 204, 155, 0.48);  color: #000000; }
+.mv-prov-badge.is-middleware    { background: rgba(255, 167, 38, 0.48);  color: #000000; }
+.mv-prov-badge.is-platform      { background: rgba(167, 139, 250, 0.48); color: #311b92; }
+.mv-prov-badge.is-observability { background: rgba(77, 208, 225, 0.48);  color: #000000; }
+.mv-prov-badge.is-runtime       { background: rgba(139, 147, 167, 0.5);  color: #000000; }
+
+.mv-prov-metric {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.mv-prov-sources {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.mv-prov-label {
+  color: var(--text-secondary);
+  font-size: 0.63rem;
+}
+
+.mv-prov-chip {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  cursor: pointer;
+}
+
+.mv-prov-chip:hover { border-color: var(--accent-color); color: var(--accent-color); }
+
+.mv-prov-more,
+.mv-prov-note {
+  color: var(--text-secondary);
+  font-size: 0.63rem;
+}
+
+.mv-prov-note {
+  color: #ffa726;
+}
+
+/* ── Main column ───────────────────────────────────────────────────────── */
+
+.mv-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.6rem 0.75rem 1rem;
+  gap: 0.6rem;
+}
+
+.mv-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mv-query-input {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.mv-query-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.mv-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.mv-step {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.mv-step select {
+  height: 26px;
+  padding: 0 0.3rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.7rem;
+}
+
+.mv-run {
+  margin-left: auto;
+  padding: 0.32rem 0.85rem;
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  background: var(--accent-color);
+  color: #0b0e14;
+  font-family: var(--font-sans);
+  font-size: 0.73rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mv-run:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Unrun edits are pending, not applied — the outline says the chart below is
+   showing something other than what the box now reads. */
+.mv-run.is-dirty:not(:disabled) {
+  box-shadow: 0 0 0 2px rgba(91, 141, 239, 0.35);
+}
+
+/* ── Label filter strip ────────────────────────────────────────────────── */
+
+.mv-labels {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.mv-labels-title {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+
+.mv-label-wrap { position: relative; }
+
+.mv-label {
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  cursor: pointer;
+}
+
+.mv-label:hover,
+.mv-label.is-open { color: var(--accent-color); border-color: var(--accent-color); }
+
+.mv-label-values {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+  min-width: 200px;
+  max-width: 380px;
+  overflow-y: auto;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+
+.mv-label-value {
+  padding: 0.22rem 0.4rem;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mv-label-value:hover { background: var(--hover-bg); color: var(--accent-color); }
+
+.mv-label-empty {
+  padding: 0.3rem 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+
+/* ── Chart ─────────────────────────────────────────────────────────────── */
+
+.mv-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+.mv-chart-svg {
+  width: 100%;
+  height: 260px;
+}
+
+.mv-grid {
+  stroke: var(--border-color);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.mv-line {
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.mv-ytick,
+.mv-xtick {
+  fill: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.mv-chart-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+.mv-chart-empty--error { color: #ef5f6b; border-color: #ef5f6b; }
+.mv-chart-empty--error span { font-family: var(--font-mono); font-size: 0.7rem; }
+
+.mv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.5rem;
+  max-height: 96px;
+  overflow-y: auto;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.mv-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.1rem 0.25rem;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  cursor: pointer;
+}
+
+.mv-legend-item:hover { background: var(--hover-bg); }
+.mv-legend-item.is-off { opacity: 0.4; text-decoration: line-through; }
+
+.mv-legend-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.mv-legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+.mv-legend-value {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.mv-chart-note {
+  color: var(--text-secondary);
+  font-size: 0.67rem;
+  font-style: italic;
+}
+
+/* ── Series table ──────────────────────────────────────────────────────── */
+
+.mv-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+.mv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.mv-table th,
+.mv-table td {
+  padding: 0.3rem 0.55rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.mv-table th {
+  position: sticky;
+  top: 0;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+
+.mv-table tbody tr:last-child td { border-bottom: none; }
+.mv-table tbody tr:hover { background: var(--hover-bg); }
+
+.mv-table .is-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mv-table-label {
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+}
+
+@media (max-width: 1100px) {
+  .mv-catalog { width: 230px; }
+  .mv-legend-label { max-width: 180px; }
+}
+
+/* ── "By service": the catalogue inverted ──────────────────────────────────
+   Same two-column shape as the Explorer — a rail to pick from, a pane to read
+   — so switching tabs does not mean relearning the screen. What is different
+   is the status bar at the top: this view is served from a ~90-second sweep,
+   and a number that expensive must never appear without saying when it was
+   taken. */
+
+.svm {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.svm-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.svm-status-spin {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: svm-spin 0.8s linear infinite;
+}
+
+@keyframes svm-spin { to { transform: rotate(360deg); } }
+
+/* Respect a reduced-motion preference: the text already carries the progress,
+   so the spinner is decoration and can simply stop. */
+@media (prefers-reduced-motion: reduce) {
+  .svm-status-spin { animation: none; }
+}
+
+.svm-bar {
+  flex: 1;
+  max-width: 220px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-color);
+  overflow: hidden;
+}
+
+.svm-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent-color);
+  transition: width 0.3s ease;
+}
+
+.svm-refresh {
+  margin-left: auto;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.svm-refresh:hover { color: var(--accent-color); border-color: var(--accent-color); }
+
+/* The reconciliation line. "My service is not listed" has exactly one common
+   answer — it wrote nothing inside the window — so that answer sits on screen
+   before the question gets asked. */
+.svm-reconcile {
+  flex-shrink: 0;
+  padding: 0.25rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+}
+
+/* Partial-sweep warning. Amber, not grey: unlike the reconciliation line above
+   it is a caveat about the rows currently on screen, not background detail. */
+.svm-reconcile.is-partial {
+  color: #ffa726;
+}
+
+/* Why the operator was sent here from somewhere else. Full contrast, because
+   unlike the two lines above it is not background detail about the index — it is
+   the answer to "why am I looking at a list instead of the chart I asked for". */
+.svm-reconcile.is-notice {
+  padding: 0.4rem 0.75rem;
+  border-left: 3px solid var(--accent-color, #4c8fff);
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.svm-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Service rail ──────────────────────────────────────────────────────── */
+
+.svm-list {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 300px;
+  min-height: 0;
+  border-right: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.svm-list-head {
+  flex-shrink: 0;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.svm-search {
+  width: 100%;
+  height: 28px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.75rem;
+}
+
+.svm-search:focus { outline: none; border-color: var(--accent-color); }
+
+.svm-facets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 0.4rem;
+}
+
+.svm-facet {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-left-width: 2px;
+  border-radius: 3px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.64rem;
+  cursor: pointer;
+}
+
+.svm-facet:hover { color: var(--text-primary); }
+.svm-facet.is-on { background: var(--hover-bg); color: var(--text-primary); font-weight: 650; }
+
+.svm-facet-count {
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Same group colours as the Explorer facets, plus the two kinds that only
+   exist once the catalogue is inverted. Those two are findings rather than
+   categories, which is why scrape-only gets a warning colour. */
+.svm-facet.is-microservice,  .svm-row.is-microservice  { border-left-color: #2ecc9b; }
+.svm-facet.is-middleware,    .svm-row.is-middleware    { border-left-color: #ffa726; }
+.svm-facet.is-platform,      .svm-row.is-platform      { border-left-color: #a78bfa; }
+.svm-facet.is-observability, .svm-row.is-observability { border-left-color: #4dd0e1; }
+.svm-facet.is-runtime,       .svm-row.is-runtime       { border-left-color: #8b93a7; }
+.svm-facet.is-scrape-only,   .svm-row.is-scrape-only   { border-left-color: #e57373; }
+.svm-facet.is-observed-only, .svm-row.is-observed-only { border-left-color: var(--border-color); }
+
+.svm-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.25rem 0.35rem 0.75rem;
+}
+
+.svm-list-empty {
+  padding: 1rem 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.svm-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.22rem 0.4rem;
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: 0 3px 3px 0;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.svm-row:hover { background: var(--hover-bg); }
+.svm-row.is-on { background: var(--hover-bg); color: var(--accent-color); font-weight: 600; }
+
+.svm-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.svm-row-counts {
+  flex-shrink: 0;
+  display: inline-flex;
+  gap: 0.3rem;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.svm-row-emitted { color: var(--text-primary); }
+/* Dimmer than the emitted count on purpose: these are metrics ABOUT the
+   service, not from it, and they must never read as its own surface area. */
+.svm-row-observed { color: var(--text-secondary); opacity: 0.75; }
+
+/* ── Detail pane ───────────────────────────────────────────────────────── */
+
+.svm-detail {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.6rem 0.85rem 1.25rem;
+}
+
+.svm-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.svm-detail-name {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.svm-kind {
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  background: var(--border-color);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.63rem;
+  font-weight: 700;
+}
+
+.svm-kind.is-microservice  { background: rgba(46, 204, 155, 0.48);  color: #000000; }
+.svm-kind.is-middleware    { background: rgba(255, 167, 38, 0.48);  color: #000000; }
+.svm-kind.is-platform      { background: rgba(167, 139, 250, 0.48); color: #311b92; }
+.svm-kind.is-observability { background: rgba(77, 208, 225, 0.48);  color: #000000; }
+.svm-kind.is-runtime       { background: rgba(139, 147, 167, 0.5);  color: #000000; }
+.svm-kind.is-scrape-only   { background: rgba(229, 115, 115, 0.48); color: #000000; }
+
+.svm-detail-hint {
+  margin: 0.3rem 0 0.6rem;
+  max-width: 70ch;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.svm-tabs {
+  display: flex;
+  gap: 0.15rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.svm-tab {
+  padding: 0.35rem 0.7rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.73rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.svm-tab:hover:not(:disabled) { color: var(--text-primary); }
+.svm-tab:disabled { opacity: 0.4; cursor: default; }
+.svm-tab.is-active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+
+.svm-techs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0.55rem 0 0.4rem;
+}
+
+.svm-tech {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 0.64rem;
+}
+
+.svm-tech-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.svm-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.svm-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.15rem;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.svm-section-count {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  opacity: 0.75;
+}
+
+.svm-metric {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.16rem 0.3rem;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.svm-metric:hover { background: var(--hover-bg); color: var(--accent-color); }
+
+.svm-metric-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Same badge vocabulary as the Explorer catalogue: a counter still needs
+   rate(), and that is just as true when it is reached from a service. */
+.svm-metric-type {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  color: #0b0e14;
+  font-family: var(--font-sans);
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+
+.svm-metric-type.is-counter   { background: #ffa726; }
+.svm-metric-type.is-gauge     { background: #2ecc9b; }
+.svm-metric-type.is-histogram { background: #a78bfa; }
+.svm-metric-type.is-summary   { background: #4dd0e1; }
+.svm-metric-type.is-unknown   { background: var(--border-color); color: var(--text-secondary); }
+
+.svm-empty {
+  padding: 1.25rem 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.svm-empty-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.7rem;
+}

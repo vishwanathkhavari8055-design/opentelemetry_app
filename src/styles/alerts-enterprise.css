@@ -1,0 +1,1200 @@
+/* ==========================================================================
+   Enterprise Alerts screen (fired alerts).
+
+   Its own file rather than 400 more lines appended to alerts.css, which is
+   already 2,500 and covers the rules editor, folders rail and import dialog.
+
+   Additive by construction: every selector here is namespaced with a `2` suffix
+   or a new prefix, so nothing can restyle the rules screens that share the other
+   file. The shared primitives — .alerts-btn-*, .alerts-modal-*, .alerts-banner-*,
+   .iam-foot, .iam-switch-btn, .ae-* — are reused rather than duplicated.
+   ========================================================================== */
+
+.alerts-page2 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  height: 100%;
+  min-height: 0;
+  padding: 0.75rem;
+}
+
+/* ── Summary cards ──────────────────────────────────────────────────────── */
+
+.alerts-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.alerts-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-left-width: 3px;
+  border-radius: 6px;
+  background: var(--surface-color);
+  text-align: left;
+  cursor: pointer;
+}
+
+.alerts-card:hover {
+  background: var(--hover-bg);
+}
+
+/* An applied card is outlined, not just tinted. The tint already carries the
+   severity, so reusing it for "selected" would make the two ambiguous. */
+.alerts-card.is-active {
+  border-color: var(--accent-color);
+  border-left-color: var(--accent-color);
+  box-shadow: inset 0 0 0 1px var(--accent-color);
+}
+
+.alerts-card-label {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.alerts-card-value {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+/* A shimmer, not a zero. Showing "0 critical" before the data lands is a lie
+   that happens to look reassuring, which is the worst failure mode available to
+   an alert summary. */
+.alerts-card-skeleton {
+  width: 2.2rem;
+  height: 1.5rem;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--hover-bg) 25%, var(--border-color) 50%, var(--hover-bg) 75%);
+  background-size: 200% 100%;
+  animation: alerts-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes alerts-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alerts-card-skeleton,
+  .alerts-skel,
+  .alerts-spin {
+    animation: none;
+  }
+}
+
+.alerts-card--open     { border-left-color: #ef5350; }
+.alerts-card--ack      { border-left-color: #ffa726; }
+.alerts-card--critical { border-left-color: #d32f2f; }
+.alerts-card--warning  { border-left-color: #ffca28; }
+.alerts-card--error    { border-left-color: #ff7043; }
+.alerts-card--resolved { border-left-color: #4caf50; }
+
+/* ── Toolbar ────────────────────────────────────────────────────────────── */
+
+.alerts-toolbar2 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+.alerts-toolbar2-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* The second toolbar row: result count, rows-per-page, clear. All the filters
+   are on the row above now. */
+.alerts-toolbar2-row--meta {
+  font-size: 0.72rem;
+}
+
+.alerts-toolbar2-spacer {
+  flex: 1 1 auto;
+}
+
+.alerts-search2 {
+  position: relative;
+  width: 320px;
+  max-width: 45vw;
+}
+
+.alerts-search2-x {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.alerts-search2-x:hover {
+  color: var(--text-primary);
+}
+
+.alerts-filter2 {
+  width: auto;
+  min-width: 130px;
+  max-width: 190px;
+  height: 28px;
+  padding: 0 0.4rem;
+  font-size: 0.75rem;
+}
+
+.alerts-filter2--narrow {
+  min-width: 66px;
+}
+
+.alerts-refresh2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.alerts-refresh2-label {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.alerts-spin {
+  animation: alerts-rotate 0.9s linear infinite;
+}
+
+@keyframes alerts-rotate {
+  to { transform: rotate(360deg); }
+}
+
+.alerts-count2 {
+  color: var(--text-primary);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.alerts-clear2 {
+  height: 24px;
+  padding: 0 0.5rem;
+  font-size: 0.7rem;
+}
+
+/* ── Checkbox dropdown (severity, status) ───────────────────────────────── */
+
+/*
+ * Sized to sit beside the native <select>s in the same toolbar row, so the two
+ * kinds of dropdown read as one control family rather than as a bug.
+ */
+.cbs {
+  position: relative;
+  display: inline-flex;
+}
+
+.cbs-face {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 28px;
+  min-width: 130px;
+  max-width: 190px;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.cbs-face:hover,
+.cbs-face.is-open {
+  border-color: var(--accent-color);
+}
+
+/* An active filter is visibly different from "All". Without this, a dropdown
+   narrowing the table looks identical to one that is not. */
+.cbs-face.has-value {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.cbs-face-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.cbs-clear,
+.cbs-caret {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.cbs-clear {
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cbs-clear:hover {
+  color: var(--error-color);
+}
+
+.cbs-caret {
+  font-size: 0.6rem;
+}
+
+.cbs-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 80;
+  min-width: 100%;
+  width: max-content;
+  max-width: 260px;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.cbs-menu:focus {
+  outline: 1px solid var(--accent-color);
+}
+
+.cbs-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.35rem 0.3rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cbs-count {
+  flex: 1;
+  color: var(--text-secondary);
+  font-size: 0.64rem;
+  white-space: nowrap;
+}
+
+.cbs-link {
+  border: none;
+  background: none;
+  color: var(--accent-color);
+  font-size: 0.64rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cbs-link:hover {
+  text-decoration: underline;
+}
+
+.cbs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  max-height: 240px;
+  padding-top: 0.2rem;
+  overflow-y: auto;
+}
+
+.cbs-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.35rem;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.cbs-item:hover,
+.cbs-item.is-cursor {
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.cbs-item.is-on {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.cbs-item input {
+  margin: 0;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.cbs-item-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Same colours the table uses for the matching pill. */
+.cbs-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.cbs-dot--disaster     { background: #ff8a80; }
+.cbs-dot--critical     { background: #ef5350; }
+.cbs-dot--error        { background: #ff8a65; }
+.cbs-dot--warning      { background: #ffca28; }
+.cbs-dot--info         { background: #64b5f6; }
+.cbs-dot--firing       { background: #ef5350; }
+.cbs-dot--acknowledged { background: #ffa726; }
+.cbs-dot--resolved     { background: #4caf50; }
+.cbs-dot--closed       { background: var(--text-secondary); }
+
+/* ── Bulk action bar ────────────────────────────────────────────────────── */
+
+.alerts-bulkbar2 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--accent-color);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent-color) 12%, var(--surface-color));
+}
+
+.alerts-bulkbar2-count {
+  color: var(--accent-color);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+/* ── Table ──────────────────────────────────────────────────────────────── */
+
+.alerts-table2 {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  overflow: hidden;
+}
+
+/* A background refresh dims the rows rather than replacing them. Emptying the
+   table on a timer makes it unusable for the thing it exists for. */
+.alerts-table2.is-refreshing .alerts-body2 {
+  opacity: 0.65;
+}
+
+.alerts-body2 {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.alerts-row2 {
+  display: grid;
+  /* Triage order, matching COLUMNS in AlertsTable.jsx. */
+  grid-template-columns:
+    34px                    /* select        */
+    minmax(150px, 0.9fr)    /* first seen    */
+    minmax(260px, 2.4fr)    /* alert + status */
+    minmax(150px, 1.4fr)    /* service       */
+    minmax(84px, 0.6fr)     /* severity      */
+    minmax(112px, 0.6fr)    /* current usage */
+    198px                   /* actions       */
+    minmax(150px, 0.9fr);   /* last seen     */
+  align-items: center;
+  column-gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.75rem;
+  /* Eight columns fit a laptop where thirteen did not — dropping Source, Stream,
+     Duration, Updated and Acked-by is what bought the two timestamps room for a
+     real date, and Limit went the same way once it proved empty on every rule this
+     deployment runs. The BODY still scrolls horizontally rather than the page, so
+     the app shell and nav rail stay put on a narrow screen. Keep this in step with
+     the tracks above — it is their sum of minimums, and a stale value collapses the
+     widest column instead of scrolling. */
+  min-width: 1060px;
+}
+
+.alerts-row2--head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.alerts-row2 > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tabular figures so the decimal points line up down the column — proportional
+   digits make 9.9 and 78.2 look like different magnitudes at a glance. */
+.alerts-usage2 {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Current Usage carries two facts: the absolute amount ("4040 MB") and how close to
+   the edge that is ("78.9%"). Stacked rather than side by side, so the amounts stay
+   in a scannable column and the percentage never pushes one out of the cell.
+   `overflow: hidden` on the row's cells clips the second line, so this one opts out
+   of the single-line ellipsis the other columns need. */
+.alerts-row2 > span.alerts-usage2 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.alerts-usage2-main {
+  color: var(--text-primary);
+}
+
+.alerts-usage2-pct {
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+}
+
+.alerts-body2 .alerts-row2:hover {
+  background: var(--hover-bg);
+}
+
+.alerts-row2.is-selected {
+  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+}
+
+/* An open alert gets a left edge. Every other status is legible from its pill;
+   this is the one that should catch the eye while scrolling past. */
+.alerts-row2.is-open {
+  box-shadow: inset 3px 0 0 #ef5350;
+}
+
+.alerts-sort2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.alerts-sort2:hover {
+  color: var(--text-primary);
+}
+
+.alerts-sort2.is-active {
+  color: var(--accent-color);
+}
+
+.alerts-sort2-caret {
+  font-size: 0.7em;
+  opacity: 0.7;
+}
+
+.alerts-name2 {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.alerts-name2-btn {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.alerts-name2-btn:hover {
+  color: var(--accent-color);
+  text-decoration: underline;
+}
+
+.alerts-badge2 {
+  flex-shrink: 0;
+  padding: 0 0.3rem;
+  border-radius: 3px;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.alerts-badge2--new    { background: rgba(255, 167, 38, 0.52); color: #000000; }
+.alerts-badge2--reopen { background: rgba(100, 181, 246, 0.52); color: #000000; }
+.alerts-badge2--warn   { background: rgba(255, 202, 40, 0.52); color: #7a4f00; }
+
+.alerts-sev2 {
+  display: inline-block;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.alerts-sev2--disaster { background: rgba(183, 28, 28, 0.54); color: #ffffff; }
+.alerts-sev2--critical { background: rgba(211, 47, 47, 0.52); color: #ffffff; }
+.alerts-sev2--error    { background: rgba(255, 112, 67, 0.5); color: #000000; }
+.alerts-sev2--warning  { background: rgba(255, 202, 40, 0.48); color: #7a4f00; }
+.alerts-sev2--info     { background: rgba(100, 181, 246, 0.48); color: #000000; }
+
+/* Colour AND a word, always. Either alone fails somebody — and colour alone
+   fails completely in a screenshot pasted into a ticket. */
+.alerts-status2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.05rem 0.45rem 0.05rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.alerts-status2-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.alerts-status2--firing       { background: rgba(211, 47, 47, 0.5); color: #ffffff; }
+.alerts-status2--acknowledged { background: rgba(255, 167, 38, 0.5); color: #000000; }
+.alerts-status2--resolved     { background: rgba(76, 175, 80, 0.48); color: #000000; }
+.alerts-status2--closed       { background: var(--hover-bg); color: var(--text-secondary); }
+
+.alerts-dur2 {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.alerts-actions2 {
+  display: flex;
+  align-items: center;
+  /* A real gap, not a hairline. These two buttons have opposite meanings and sit
+     next to each other; the space between them is the main thing standing between
+     "acknowledge" and "resolve" on a fast click. */
+  gap: 0.4rem;
+  overflow: visible;
+}
+
+.alerts-actions2 .iam-switch-btn {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.68rem;
+}
+
+/* ── Row actions: Acknowledge and Resolve, side by side ───────────────────────
+   Deliberately NOT interchangeable to look at. Acknowledge is the neutral outline
+   the rest of the table uses; Resolve is green, matching the Resolved state text it
+   produces, so the button and the outcome are the same colour. Anyone who mis-clicks
+   should be able to see it from the colour alone, before reading the label. */
+.alerts-act2 {
+  white-space: nowrap;
+}
+
+.alerts-act2--resolve {
+  border-color: color-mix(in srgb, #66bb6a 45%, transparent);
+  color: #66bb6a;
+}
+
+.alerts-act2--resolve:hover:not(:disabled) {
+  border-color: #66bb6a;
+  background: color-mix(in srgb, #66bb6a 12%, transparent);
+}
+
+.alerts-act2--acknowledge:hover:not(:disabled) {
+  border-color: #ffb74d;
+  color: #ffb74d;
+}
+
+/* The amber marker on an acknowledged row sits where Acknowledge was, keeping the
+   Resolve buttons aligned in a column down the table. */
+.alerts-actions2 .alerts-actstate--acknowledged {
+  min-width: 5.4rem;
+}
+
+.alerts-act--reopen {
+  color: #64b5f6;
+}
+
+.alerts-act--reopen:hover:not(:disabled) {
+  border-color: #64b5f6;
+}
+
+/* ── Row action menu ───────────────────────────────────────────────────────────
+   One dropdown replaced the row of Ack/Resolve/Close buttons. Two buttons with
+   opposite meanings one pixel apart is how somebody resolves an alert they meant
+   to acknowledge; a menu makes each a named line chosen deliberately. */
+/* Beats `.alerts-row2 > span { overflow: hidden }`, which every other cell needs
+   for its ellipsis and which would otherwise clip the open menu to the row. */
+.alerts-row2 > span.alerts-actions2 {
+  overflow: visible;
+}
+
+.alerts-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Rows near the bottom of the scrolling body open upward — the body clips to its
+   own box, so a downward menu on the last row would be cut in half. */
+.alerts-menu-pop.is-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.alerts-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.alerts-menu-caret {
+  font-size: 0.6rem;
+  opacity: 0.7;
+}
+
+.alerts-menu-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 156px;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--company-bg);
+  /* The menu must float above the sticky header and the next rows, and the table
+     body scrolls — so it is anchored to the row, not the page. */
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+}
+
+.alerts-menu-item {
+  padding: 0.35rem 0.55rem;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.alerts-menu-item:hover:not(:disabled) {
+  background: var(--hover-bg);
+}
+
+/* The menu carries the same two lines on every row, so a transition the alert
+   cannot take is greyed rather than dropped — the list keeps its shape and the
+   line's tooltip says why it is unavailable. */
+.alerts-menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.alerts-menu-item--reopen {
+  color: #64b5f6;
+}
+
+.alerts-menu-sep {
+  height: 1px;
+  margin: 0.2rem 0.2rem;
+  background: var(--border-color);
+}
+
+/* ── The Actions cell doubles as the status ────────────────────────────────────
+   Open reads "Actions"; acknowledging turns it into "Acknowledged"; resolved and
+   closed read as themselves and stop being controls. The colours match the pills
+   this replaced, so the row still says its state at a glance. */
+.alerts-actstate {
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.alerts-actstate--acknowledged,
+.alerts-menu-btn.alerts-actstate--acknowledged {
+  color: #ffb74d;
+}
+
+.alerts-actstate--resolved {
+  color: #66bb6a;
+}
+
+.alerts-actstate--closed {
+  color: var(--text-secondary);
+}
+
+/* An acknowledged row keeps a coloured border so the button reads as a state and
+   not just differently-coloured text. */
+.alerts-menu-btn.alerts-actstate--acknowledged {
+  border-color: color-mix(in srgb, #ffb74d 55%, transparent);
+}
+
+/* First Seen / Last Seen. Tabular figures so the stamps line up as a column that
+   can be scanned for "when did this start" without reading each one. */
+.alerts-time2 {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Acknowledge dialog ──────────────────────────────────────────────────── */
+.alerts-ack-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-top: 0.85rem;
+}
+
+.alerts-ack-label {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.alerts-ack-field .ae-input {
+  width: 100%;
+}
+
+.alerts-ack-hint {
+  margin-top: 0.4rem;
+  font-size: 0.7rem;
+}
+
+/* Skeleton rows keep the table's shape while the first page loads, so nothing
+   jumps when the real rows arrive. */
+.alerts-row2--skeleton {
+  pointer-events: none;
+}
+
+.alerts-skel {
+  display: block;
+  height: 0.7rem;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--hover-bg) 25%, var(--border-color) 50%, var(--hover-bg) 75%);
+  background-size: 200% 100%;
+  animation: alerts-shimmer 1.4s ease-in-out infinite;
+}
+
+/* ── Description block ──────────────────────────────────────────────────── */
+
+/*
+ * The description is one paragraph per affected entity, each a short list of
+ * `key: value` lines produced by the OpenObserve template. It used to be rendered
+ * as a single-line <dd> in the fact list, which turned a six-entity report into an
+ * unreadable smear.
+ *
+ * pre-wrap, not <pre>: the newlines are meaningful (they separate the entities and
+ * their fields) but the lines must still wrap in a fixed-width drawer rather than
+ * forcing a horizontal scrollbar.
+ */
+.alerts-desc2 {
+  max-height: 320px;
+  margin: 0.3rem 0 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word; word-break: normal;
+}
+
+/* Entity count beside the alert name in the table. Distinct from the +N and the
+   reopen badges: this one counts THINGS AFFECTED, not events. */
+.alerts-badge2--affected {
+  background: var(--hover-bg);
+  color: var(--text-secondary);
+}
+
+/* The incident TYPE, shown only when it differs from the rule name — i.e. when this
+   condition has escalated across severity-named rules. Monospaced and unfilled: it is
+   an identifier being quoted, not a count or a state, and giving it a background would
+   make it compete with the badges that are. */
+.alerts-badge2--type {
+  background: none;
+  border: 1px dashed var(--border-color);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+}
+
+/* "9th" — the alert has been resolved and come back eight times. Deliberately not
+   a severity colour: it says nothing about how bad this is, only that it is not the
+   first time, which is the difference between one incident and a pattern. */
+.alerts-badge2--recurring {
+  background: color-mix(in srgb, #64b5f6 18%, transparent);
+  color: #000000;
+}
+
+/* ── Details drawer ─────────────────────────────────────────────────────── */
+
+.alerts-drawer--wide {
+  width: min(760px, 96vw);
+}
+
+.alerts-drawer-title2 {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.alerts-drawer-tabs {
+  display: flex;
+  gap: 0.15rem;
+  flex-shrink: 0;
+  padding: 0 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+}
+
+.alerts-drawer-tab {
+  padding: 0.4rem 0.6rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.alerts-drawer-tab:hover {
+  color: var(--text-primary);
+}
+
+.alerts-drawer-tab.is-active {
+  border-bottom-color: var(--accent-color);
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.alerts-pre2 {
+  max-height: 300px;
+  margin: 0.3rem 0 0;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word; word-break: normal;
+}
+
+/* ── OpenObserve webhook incidents ─────────────────────────────────────── */
+
+.oo-incidents-row {
+  width: 100%;
+  text-align: left;
+}
+
+button.oo-incidents-row {
+  color: inherit;
+}
+
+.oo-incident-open {
+  flex-shrink: 0;
+}
+
+.oo-incident-facts {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.36fr) minmax(0, 1fr);
+  gap: 0.45rem 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-color);
+  font-size: 0.76rem;
+}
+
+.oo-incident-facts--compact {
+  grid-template-columns: minmax(110px, 0.32fr) minmax(0, 1fr);
+  margin: 0.55rem 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.oo-incident-facts dt {
+  color: var(--text-secondary);
+}
+
+.oo-incident-facts dd {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oo-incident-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.oo-incident-alert {
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-color);
+}
+
+.oo-incident-alert-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.oo-incident-alert-head strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oo-incident-raw-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.alerts-pre2--raw {
+  max-height: 420px;
+}
+
+/* One row per signal, button and explanation side by side.
+   A column, not the wrapped strip this replaced: each button now carries a
+   sentence saying what it will scope to, and the three sentences differ for the
+   same alert. Laid out as a strip they wrap into each other and stop being
+   readable as "this button does THIS". The button column is a fixed width so the
+   three labels line up and the sentences all start at one left edge. */
+.alerts-telemetry3 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.alerts-telemetry3-row {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.alerts-telemetry3-row > .alerts-btn-ghost {
+  justify-self: stretch;
+  text-align: center;
+}
+
+.alerts-telemetry3-row a.alerts-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.alerts-telemetry3-hint {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+
+/* A drill that can do nothing must look inert rather than merely unpressed —
+   the sentence beside it already says why. */
+.alerts-telemetry3-row > .alerts-btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Audit trail ────────────────────────────────────────────────────────── */
+
+.alerts-trail2 {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alerts-trail2 li {
+  display: grid;
+  grid-template-columns: 92px 150px minmax(80px, 1fr);
+  align-items: baseline;
+  column-gap: 0.5rem;
+  padding: 0.25rem 0.4rem;
+  border-left: 2px solid var(--border-color);
+  font-size: 0.72rem;
+}
+
+.alerts-trail2 li.alerts-trail2-firing       { border-left-color: #ef5350; }
+.alerts-trail2 li.alerts-trail2-acknowledged { border-left-color: #ffa726; }
+.alerts-trail2 li.alerts-trail2-resolved     { border-left-color: #4caf50; }
+.alerts-trail2 li.alerts-trail2-closed       { border-left-color: var(--text-secondary); }
+.alerts-trail2 li.alerts-trail2-reopened     { border-left-color: #64b5f6; }
+
+.alerts-trail2-type {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.alerts-trail2-when {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.alerts-trail2-actor {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.alerts-trail2-note {
+  grid-column: 1 / -1;
+  padding-left: 0.1rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* ── Toast ──────────────────────────────────────────────────────────────── */
+
+.alerts-toast2 {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 420px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-left-width: 3px;
+  border-radius: 6px;
+  background: var(--surface-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+}
+
+.alerts-toast2 button {
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.alerts-toast2--ok   { border-left-color: #4caf50; }
+.alerts-toast2--warn { border-left-color: #ffca28; }
+
+/* Errors do not auto-dismiss, so they get the strongest edge — an error nobody
+   read is a bug that looks like it worked. */
+.alerts-toast2--error { border-left-color: var(--error-color); }
+
+/* ── Narrow screens ─────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .alerts-search2 {
+    width: 100%;
+    max-width: none;
+  }
+
+  .alerts-drawer-tabs {
+    padding: 0 0.5rem;
+  }
+}
+
+/* ── Dynamic payload facts ─────────────────────────────────────────────────────
+   Keys come from the deployment's notification template, so they are arbitrary
+   identifiers of arbitrary length rather than the curated labels beside them.
+   Monospaced so they read as field names, and wrapped rather than ellipsised —
+   a truncated key is not identifiable, which defeats the point of showing it. */
+.alerts-dynfacts dt {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
+}
+
+.alerts-dynfacts dd {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}

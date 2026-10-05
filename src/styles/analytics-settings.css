@@ -1,0 +1,1074 @@
+/* ==========================================================================
+   Log Analytics, drawn to the SETTINGS spec.
+
+   Settings (styles/iam.css) is the one screen in this app measured off a
+   wireframe: a #262626 page, an 11px #404040 frame that is the only thing
+   separating card from page, 35px row bands with 8px of page colour between
+   them, Open Sans, teal #009688, and every edge square. styles/alerts-settings.css
+   brought the Alerts section onto that spec; this file does the same for the two
+   Log Analytics faces, so the three screens are one screen's worth of chrome.
+
+   ── Why a separate file, and why every selector is prefixed ──────────────
+
+   Analytics does not own its markup outright. `.ae-select`, `.results-bar-btn`,
+   `.alerts-btn-ghost`, `.alerts-banner*`, `.alerts-skel`, `.iam-state` and
+   `.pt-note-link` are shared with Settings, Alerts, Product Catalog, Dashboards,
+   Logs and Traces. Restyling any of them in place would repaint those screens.
+
+   So NOTHING here touches a base rule. Every selector is scoped under
+   `.analytics-shell` — the root AnalyticsShell renders, and the only place it
+   renders — exactly the way alerts-settings.css scopes its overrides under
+   `.alerts-shell` and iam.css under `.iam-view`.
+
+   Imported LAST in index.css: it has to win over analytics.css,
+   analytics-category-board.css, analytics-flip.css, alerts.css and
+   logs-query.css, several of them on equal specificity.
+
+   ── Tokens first, selectors second ───────────────────────────────────────
+
+   The bulk of the repaint is done by REDEFINING the app's colour tokens on the
+   screen root rather than by restating `color` on every element. Custom
+   properties inherit, so every descendant already reading `var(--text-primary)`
+   resolves to the Settings ink here and to the app default everywhere else.
+
+   That is not just brevity. Both faces are careful about which numbers are
+   allowed to carry colour — `.an-num--error`, `.acb-chip-value--warn`,
+   `.an-stat.is-quiet .an-stat-value` and friends are single- and double-class
+   rules whose whole job is to win against the plain-text colour. A
+   `.analytics-shell .an-num { color: … }` here is (0,2,0) and, imported last,
+   would silently outrank the severity rules and flatten the Error column back to
+   white. Retuning the token those rules sit ON leaves that hierarchy intact.
+
+   The `--sev-*` scale is deliberately NOT touched: the same ERROR has to be the
+   same red on the logs histogram, the Analytics faces and the trace pill, which
+   is the entire reason that scale lives on :root.
+
+   ── Every edge is square ─────────────────────────────────────────────────
+
+   Each rule states `border-radius: 0` outright rather than relying on a blanket
+   `.analytics-shell *`. Same reason iam.css gives: that selector is only (0,1,0)
+   specific, so any single-class rule in a later stylesheet wins and the radius
+   silently comes back.
+   ========================================================================== */
+
+/* ── Palette ──────────────────────────────────────────────────────────────── */
+
+/*
+   The `--set-*` tokens iam.css declares on `.iam-view` and alerts-settings.css on
+   `.alerts-shell`, declared here on this screen's root for the same reason: on
+   :root they would repaint Logs, Traces, Metrics, Alerts and Settings along with
+   this screen.
+
+   Below them, the app tokens the two faces actually read are re-pointed at the
+   same values — see the header note. Together those two blocks are most of this
+   file's work.
+*/
+.analytics-shell {
+  --set-bg: #262626;
+  --set-panel: #262626;
+  --set-line: #404040;
+  --set-row: #313131;
+  --set-row-hover: #3b3b3b;
+  --set-accent: #009688;
+  --set-accent-hi: #00aba2;
+  --set-ink: #ffffff;
+  /* No `--set-badge`. Settings and Alerts declare that tinted fill for the box
+     behind a 2px accent edge; nothing on this screen has one. The selected tile
+     takes the accent on its border alone, and a token defined here for nothing to
+     read is a fill waiting to be used by mistake. */
+  /* The rule under a card title. Lighter than --set-line, which all but
+     disappears when drawn on the card rather than against the page. */
+  --set-rule: #5a5a5a;
+  /* Two insets that have to stay in step. The row band is inset this far from the
+     card's inner edge; the cell text is inset this far again from the band.
+     Column headings sit OUTSIDE the band, so their padding is the sum — which is
+     what keeps each heading over its column. */
+  --set-band-inset: 13px;
+  --set-cell-pad: 1.35rem;
+  /* One step dimmer than the ink, for secondary lines. */
+  --set-ink-dim: #d0d0d0;
+  /* Empty states and hints. */
+  --set-ink-faint: #9a9a9a;
+
+  /* ── The app tokens, re-pointed ──────────────────────────────────────────
+     Everything the two faces paint themselves with comes through these. */
+
+  /* Row and card ink, at full strength: the Settings spec's white, not the
+     app's #e0e0e0. */
+  --text-primary: var(--set-ink);
+  /* Step labels, the breadcrumb tail, the step numerals' disabled state, the
+     board's subtitle. The faint step rather than the dim one — this token lands on
+     genuinely secondary text here, and #d0d0d0 would make every label compete with
+     the figure beside it. */
+  --text-secondary: var(--set-ink-faint);
+  /* Stat tiles, category cards and every other surface the faces raise off the
+     page become the 35px row band's tone. */
+  --surface-color: var(--set-row);
+  --border-color: var(--set-line);
+  /* The faces use this for "one step behind the surface" — the empty severity
+     rail, the child-count pill, the column-heading strip. On this spec that is
+     the page/card colour. */
+  --company-bg: var(--set-bg);
+  --accent-color: var(--set-accent);
+  /* A solid band tone, not the app's 8%-teal wash: on a card that is already a
+     band, a tinted hover reads as a selection. */
+  --hover-bg: var(--set-row-hover);
+
+  /* Open Sans throughout, done by REDEFINING the token rather than writing the
+     family on each rule.
+
+     `--font-mono` is deliberately NOT redirected. Both faces are almost entirely
+     numeric columns — Total, Info, Warn, Error, Debug, Other, and the share of
+     the estate — and those read as columns only while the digits stay
+     fixed-width. This is the same call alerts-settings.css makes and the one
+     place both files depart from Settings. */
+  --font-sans: 'Open Sans', sans-serif;
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--set-bg);
+  color: var(--set-ink);
+  /* body set the app font on `--font-sans`, but resolved that token against
+     :root — the override above only reaches this subtree once something here
+     re-reads it. */
+  font-family: var(--font-sans);
+}
+
+/* Form controls do not inherit `font-family` from their ancestors; left alone
+   they take the UA's own (Arial, on Windows). Declared once for the subtree so a
+   control added to this screen later is in Open Sans without knowing why. */
+.analytics-shell input,
+.analytics-shell select,
+.analytics-shell textarea,
+.analytics-shell button {
+  font-family: inherit;
+}
+
+/* ── Screen title bar ─────────────────────────────────────────────────────── */
+
+/*
+   Mirrors `.alerts-topbar`, which mirrors `.iam-topbar`. Analytics, Alerts and
+   Settings are the three screens with no SectionNav column, so they are the three
+   that carry their own title.
+
+   The Alerts figures (0.55rem/1.05rem), not the Settings ones: like Alerts, this
+   screen stacks title → tabs → panel → the face's own header band, which is one
+   band more of chrome above the table that is the reason the screen exists.
+*/
+.analytics-topbar {
+  flex-shrink: 0;
+  padding: 0.55rem 1.15rem;
+  border-bottom: 1px solid var(--set-line);
+  background: var(--set-panel);
+}
+
+.analytics-topbar-title {
+  margin: 0;
+  color: var(--set-ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+/* The box the tab strip and the panel share. Draws nothing itself — the visible
+   frame belongs to `.analytics-shell-panel` — so all it contributes is the 12px
+   the whole assembly is inset from the content area. */
+.analytics-sh-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0 12px 12px;
+  box-sizing: border-box;
+}
+
+/* ── Tab strip: Category Table / Category Board ───────────────────────────── */
+
+/*
+   The Settings segmented strip, identical to the Rules / Alerts strip.
+
+   align-items:flex-start with a 39px band and 37px tabs is what distinguishes the
+   selected tab: every tab shares one top edge, and only the active one is tall
+   enough to reach the frame below, so the inactive tabs keep a 2px seam of page
+   colour under them and the active one merges into the frame. That seam IS the
+   selected state — the fills are identical.
+
+   NO `gap`: the tabs abut, and the hairline between two of them is drawn INSIDE
+   the right-hand tab as an inset shadow (below). A gap would be a 2px channel of
+   page colour, which reads as detached buttons rather than one strip.
+*/
+.analytics-shell .analytics-shell-tabs {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  flex-shrink: 0;
+  height: 39px;
+  margin: 19px 0 0;
+  padding: 0;
+  border-bottom: none;
+  background: transparent;
+}
+
+/* Shrinkable FROM 214px rather than fixed AT it; `min-width: 0` is the part that
+   actually permits the shrink, since a flex item will not go below its content
+   width without it. */
+.analytics-shell .analytics-shell-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  flex: 0 1 214px;
+  min-width: 0;
+  height: 37px;
+  padding: 0 1.1rem;
+  margin-bottom: 0;
+  border: none;
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-size: 0.8rem;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+/* The seam between two adjacent tabs. An inset shadow rather than a border-left,
+   so the divider costs the tab no layout — a border would eat 1px out of every
+   tab's box and drag the strip off the 214px grid. */
+.analytics-shell .analytics-shell-tab + .analytics-shell-tab {
+  box-shadow: inset 1px 0 0 var(--set-bg);
+}
+
+.analytics-shell .analytics-shell-tab:hover:not(.analytics-shell-tab--active) {
+  background: #4d4d4d;
+  color: var(--set-ink);
+}
+
+/* Two pixels taller, and that is the whole difference in the fill. */
+.analytics-shell .analytics-shell-tab--active {
+  height: 39px;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-weight: 700;
+}
+
+.analytics-shell .analytics-shell-tab:focus-visible {
+  outline: 2px solid var(--set-accent);
+  outline-offset: -2px;
+}
+
+/* ── The panel ────────────────────────────────────────────────────────────── */
+
+/*
+   Its 11px #404040 border IS the frame around the card: #262626 both inside it and
+   outside, so the frame is the only thing separating card from page. Drawn as a
+   border rather than as padding on a wrapper, which keeps it on the element that
+   owns the card's fill.
+
+   NO top margin — a 1px line of page colour under the strip would run under the
+   ACTIVE tab too, so the tab would never reach the frame and the selected state
+   would lose the very thing that signals it.
+*/
+.analytics-shell .analytics-shell-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  border: 11px solid var(--set-line);
+  border-radius: 0;
+  background-color: var(--set-panel);
+  box-sizing: border-box;
+  /* Deliberately NOT an overflow container, matching `.iam-main` and
+     `.alerts-shell-panel`. Every child that scrolls owns its own scroller. */
+}
+
+/* `[hidden]` on a flex item loses to `display: flex` above, which would un-hide the
+   inactive panel and stack the Board under the Table. It only bites when a tab is
+   switched before its panel unmounts, but that is one frame of both faces on
+   screen at once, so it is stated. */
+.analytics-shell .analytics-shell-panel[hidden] {
+  display: none;
+}
+
+/* Each face fills the panel and scrolls internally, so the strip never scrolls
+   away from the screen it is switching. */
+.analytics-shell .analytics-shell-panel > * {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Shared controls ──────────────────────────────────────────────────────── */
+
+/*
+   The header controls both faces share: the time-range select, the auto-refresh
+   select, the refresh square, and the ghost buttons in the empty states.
+*/
+
+/* Form controls, wherever they appear on this screen. Same treatment iam.css
+   gives `.ae-select` and alerts-settings.css repeats. #404040 — the tab fill
+   rather than the lighter row-band tone — so the header's inputs all read as one
+   family. */
+/* No `height` — alerts.css already puts these at the 28px the rest of the header's
+   controls are drawn to, and restating it here would be one more figure to keep in
+   step with that file for no gain. */
+.analytics-shell .ae-input,
+.analytics-shell .ae-select {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+}
+
+.analytics-shell .ae-input::placeholder {
+  color: var(--set-ink-faint);
+}
+
+.analytics-shell .ae-input:focus,
+.analytics-shell .ae-select:focus {
+  border-color: var(--set-accent);
+  outline: 1px solid var(--set-accent);
+  outline-offset: -1px;
+}
+
+/* The refresh / pause square. Scoped so the identical button in the Logs results
+   bar keeps its own outline style. */
+.analytics-shell .results-bar-btn {
+  min-width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: var(--set-accent);
+  color: #fff;
+}
+
+.analytics-shell .results-bar-btn:hover:not(:disabled),
+.analytics-shell .results-bar-btn.is-active {
+  border-color: transparent;
+  background: var(--set-accent-hi);
+  color: #fff;
+}
+
+/* Secondary: the tab fill, matching `.iam-export`. Grey rather than a second teal
+   — nothing on this screen is a primary action, so nothing on it is filled
+   accent except the refresh square. */
+.analytics-shell .alerts-btn-ghost {
+  height: 28px;
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-size: 0.78rem;
+}
+
+.analytics-shell .alerts-btn-ghost:hover:not(:disabled) {
+  border-color: var(--set-line);
+  background: #4d4d4d;
+  color: var(--set-ink);
+}
+
+/* The "Open Product Catalog" jump inside an empty state. Its base rule turns the
+   link `--text-primary` on hover, which is now white-on-white against the ink
+   above it; the accent has to stay the hover too. */
+.analytics-shell .pt-note-link {
+  color: var(--set-accent);
+}
+
+.analytics-shell .pt-note-link:hover {
+  color: var(--set-accent-hi);
+}
+
+/* ── Banners ──────────────────────────────────────────────────────────────── */
+
+/* Inset to the band, like the banners inside the Settings and Alerts panels: a
+   full-bleed bar would cross the card's own inset and read as a strip laid over
+   the panel rather than as part of it. */
+.analytics-shell .alerts-banner {
+  flex-shrink: 0;
+  margin: 0.55rem var(--set-band-inset) 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid transparent;
+  border-left-width: 3px;
+  border-radius: 0;
+}
+
+.analytics-shell .alerts-banner--error {
+  border-color: #d32f2f;
+  background: rgba(211, 47, 47, 0.12);
+  color: #ffffff;
+}
+
+.analytics-shell .alerts-banner--warn {
+  border-color: #f5a623;
+  background: rgba(245, 166, 35, 0.14);
+  color: #000000;
+}
+
+/* ── Empty / loading / error bodies ──────────────────────────────────────── */
+
+.analytics-shell .iam-state {
+  color: var(--set-ink-faint);
+}
+
+.analytics-shell .iam-state-error {
+  color: #ef5350;
+}
+
+/* Square, like everything else. */
+.analytics-shell .alerts-skel {
+  border-radius: 0;
+}
+
+/* ── Scrollbars ───────────────────────────────────────────────────────────── */
+
+/*
+   THE TABLES ONLY — `.an-body` is the Category Table's rows, `.acb-panel` is the
+   Category Board's members table. Deliberately NOT `.acb-scroll`, the board's outer
+   region: that one is a fallback scroller for a window too short to hold the cards
+   at all (see the scroll section further down), and on the rare occasion it does
+   engage, a visible bar is the only thing saying there is more below. A hidden bar
+   on a region nobody expected to scroll is how content goes missing.
+
+   Why hide it on a table at all: a classic scrollbar takes LAYOUT WIDTH, and both
+   tables size their columns in `minmax()` minimums that already add up to most of
+   the panel. 15px off the content box is about the amount that tips a seven-figure
+   count into an ellipsis and cuts the right-hand column off. Removing the bar is
+   what lets all of the data be seen, not just what makes it tidy — and a table
+   whose header row is pinned above it already says which direction its rows run.
+
+   SCROLLING IS UNTOUCHED. Wheel, trackpad, touch, keyboard and programmatic
+   scrolling all behave exactly as before — only the bar is gone. Nor does it
+   strand a keyboard user: every drillable count in these rows is a real <button>,
+   so Tab walks in and the browser scrolls whatever it lands on into view.
+
+   `scrollbar-width: none` covers Firefox and Chrome 121+; the `::-webkit-scrollbar`
+   block covers older Chrome and Safari, where a zero track width is what removes
+   the bar and reclaims its space.
+*/
+.analytics-shell .an-body,
+.analytics-shell .acb-panel {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.analytics-shell .an-body::-webkit-scrollbar,
+.analytics-shell .acb-panel::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* ==========================================================================
+   CATEGORY TABLE face — AnalyticsDashboardView
+   ========================================================================== */
+
+/*
+   The face's own page padding and gaps go: the panel frame is the inset now, and
+   each block below states its own band inset. Without this the card would carry
+   0.75rem of its own padding inside an 11px frame.
+*/
+.analytics-shell .an-view {
+  gap: 0;
+  padding: 0;
+}
+
+/* The screen names itself in `.analytics-topbar` and the face is named by the tab
+   strip, so the face must not say "Analytics" a third time. Hidden rather than
+   deleted from the component: the view still renders standalone (and inside
+   AnalyticsFlipDeck, which hides it the same way), and its SIBLING — the
+   breadcrumb, the one thing in that block carrying state — is left alone. */
+.analytics-shell .an-title {
+  display: none;
+}
+
+/* ── Header band ─────────────────────────────────────────────────────────── */
+
+/*
+   `.an-head` becomes the card's header band: the drill breadcrumb on the left, the
+   range and refresh controls on the right. The rule under it stops short of the
+   card's edge on both sides, so it is a pseudo-element rather than a border — a
+   border-bottom always spans the full padding box. It is inset to the same place
+   the row bands start.
+*/
+.analytics-shell .an-head {
+  position: relative;
+  padding: 0.9rem var(--set-band-inset);
+  border-bottom: none;
+  background: transparent;
+}
+
+.analytics-shell .an-head::after {
+  content: '';
+  position: absolute;
+  right: var(--set-band-inset);
+  bottom: 0;
+  left: var(--set-band-inset);
+  height: 1px;
+  background: var(--set-rule);
+}
+
+/* The current level is the one you are on, so it is the quiet one. Its base rule
+   already reads `--text-secondary`; stated because this is the one crumb whose
+   dimness carries meaning. */
+.analytics-shell .an-crumb.is-current {
+  color: var(--set-ink-faint);
+}
+
+/* ── The step pickers ────────────────────────────────────────────────────── */
+
+/*
+   A band on the card rather than a bordered box on a padded page — the same move
+   alerts-settings.css makes on `.alerts-toolbar2`. It carries no rule of its own:
+   the header above already has one and the column headings below sit directly on
+   the card, and two more hairlines would slice one card into four.
+*/
+.analytics-shell .an-steps {
+  padding: 0.6rem var(--set-band-inset);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Full-strength white and unspaced, like the column headings — these are the
+   three questions the screen asks, not fine print. */
+.analytics-shell .an-step-label {
+  color: var(--set-ink);
+  letter-spacing: 0;
+}
+
+/* Square, like every other edge. The numeral stays teal-on-page: it is the one
+   accent mark in the band and it is what says the three steps are ordered. */
+.analytics-shell .an-step-n {
+  border-radius: 0;
+}
+
+/* ── Scope totals ────────────────────────────────────────────────────────── */
+
+/* 8px between tiles, matching the gap between row bands, and the band inset on
+   both sides so a tile's edge lines up with a row's. */
+.analytics-shell .an-stats {
+  gap: 8px;
+  padding: 0.15rem var(--set-band-inset) 0.6rem;
+}
+
+/*
+   NO `box-shadow` here, deliberately. Each tile is identified by a 3px severity
+   edge drawn as an inset shadow by five (0,1,0) rules in analytics.css; a
+   `box-shadow` on this (0,2,0) selector would erase all five and leave a row of
+   identical grey tiles. Same reason `color` is left off `.an-stat-value`: the
+   warn and error figures are coloured by (0,2,0) rules that this file must not
+   outrank.
+*/
+.analytics-shell .an-stat {
+  gap: 0.3rem;
+  padding: 0.7rem 0.8rem;
+  border-color: var(--set-line);
+  border-radius: 0;
+}
+
+.analytics-shell .an-stat-label {
+  color: var(--set-ink-dim);
+  font-size: 0.7rem;
+  letter-spacing: 0;
+}
+
+/* The same 1.45rem the category cards' headline figure is drawn at — these are the
+   two faces' tiles and they report the same numbers, so they are set at the same
+   size. `font-size` only: `color` here would be (0,2,0) and would outrank the
+   (0,2,0) warn/error rules and the (0,3,0) `is-quiet` rule in analytics.css, which
+   is the hierarchy deciding which of these figures is allowed to be coloured. */
+.analytics-shell .an-stat-value {
+  font-size: 1.45rem;
+}
+
+/* ── The table ───────────────────────────────────────────────────────────── */
+
+/* The card is the frame now, so the table draws none of its own. */
+.analytics-shell .an-table {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/*
+   Base geometry for BOTH the column-heading row and the body rows. The side
+   padding here is the heading row's: the sum of the two insets, because the
+   headings sit outside the bands while the body rows sit inside them.
+*/
+.analytics-shell .an-row {
+  padding: 2px calc(var(--set-band-inset) + var(--set-cell-pad));
+  border-bottom: none;
+  font-size: 0.78rem;
+}
+
+/* Column labels are full-strength white and unspaced, not the dimmed
+   letter-spaced caps used elsewhere in the app. No rule beneath them: the line
+   that looks like one is the top edge of the first band against the card. */
+.analytics-shell .an-row--head {
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+  background: var(--set-panel);
+  color: var(--set-ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Rows are separate bands with page colour between them, so the body is a
+   gap-spaced column that scrolls rather than a scroller with divider lines. It
+   keeps `overflow: auto` from analytics.css — this only changes how the rows are
+   spaced inside it. */
+.analytics-shell .an-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px var(--set-band-inset) var(--set-band-inset);
+}
+
+/* `flex: 0 0 auto` matters: as flex items the rows would otherwise shrink below
+   35px to fit a full table into the scroller's height, and the bands would close
+   up into the divider-lined table this spec replaces. */
+.analytics-shell .an-body .an-row {
+  flex: 0 0 auto;
+  min-height: 35px;
+  padding: 2px var(--set-cell-pad);
+  border-radius: 0;
+  background: var(--set-row);
+}
+
+/* The drillable row's hover comes through `--hover-bg`, re-pointed at the band's
+   hover tone at the top of this file. */
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+
+/*
+   No rule above the footer: the panel already ends in an 11px frame, and the
+   window range floats in open space on this spec. The Alerts figures, for the
+   same reason — on a screen whose job is the table, ~48px of chrome under it to
+   print a time window is worth trimming.
+*/
+.analytics-shell .an-foot {
+  padding: 0.3rem 0.9rem;
+  border-top: none;
+  color: #c4c4c4;
+  font-size: 0.74rem;
+}
+
+/* ==========================================================================
+   CATEGORY BOARD face — AnalyticsCategoryBoardView
+   ========================================================================== */
+
+.analytics-shell .acb-view {
+  gap: 0;
+  padding: 0;
+}
+
+/* Header band, the twin of `.an-head` above — subtitle on the left, the same
+   range and refresh controls on the right, the same inset rule beneath. */
+.analytics-shell .acb-head {
+  position: relative;
+  padding: 0.9rem var(--set-band-inset);
+  border-bottom: none;
+  background: transparent;
+}
+
+.analytics-shell .acb-head::after {
+  content: '';
+  position: absolute;
+  right: var(--set-band-inset);
+  bottom: 0;
+  left: var(--set-band-inset);
+  height: 1px;
+  background: var(--set-rule);
+}
+
+.analytics-shell .acb-subtitle {
+  color: var(--set-ink-faint);
+}
+
+/* ── Scroll region ───────────────────────────────────────────────────────── */
+
+/*
+   THE SCROLL MOVED ONTO THE TABLE.
+
+   `.acb-scroll` used to be the one scroller for the whole face: the cards and the
+   members table travelled together, so reading down a long list of microservices
+   pushed the category cards — the things you are choosing between — off the top of
+   the screen, and getting back to them meant scrolling the table away again.
+
+   Now the cards are fixed and the table scrolls inside itself. `.acb-cards` is
+   `flex: 0 0 auto` so it keeps its natural height, `.acb-panel` takes everything
+   left over and owns the scrolling (further down), and the column headings pin to
+   the top of it instead of drifting away with the rows.
+
+   `overflow` is left as the `auto` the base file sets, but it is now a FALLBACK and
+   nothing more: with the table absorbing the height, the outer region only scrolls
+   on a window too short to hold the cards themselves — and clipping them there
+   instead would be putting data out of reach to keep a scrollbar off the screen.
+   That is also why the hidden-bar treatment above skips this element.
+*/
+.analytics-shell .acb-scroll {
+  gap: 8px;
+  padding: 0.6rem var(--set-band-inset) var(--set-band-inset);
+}
+
+/* ── Category cards ──────────────────────────────────────────────────────── */
+
+/*
+   NARROW, now that the tile carries a count and a name and nothing else.
+
+   190px is set by the CATEGORY NAME, which is the only thing left on the tile whose
+   width is not known in advance: 190 less 26px of padding and the count badge
+   leaves ~135px, which holds "Infrastructure" outright and takes the longest names
+   to an ellipsis with their first two words intact. The count above it needs ~48px
+   and was never the constraint.
+
+   Held at 190 rather than tightened further now that the share of the estate has
+   gone with the severity chips. Narrower fits more tiles per row, but it buys them
+   by truncating the one word on the tile that says which category you are looking
+   at, which is the wrong trade.
+*/
+.analytics-shell .acb-cards {
+  flex: 0 0 auto;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+/*
+   ── The tile: the count, then the category ──────────────────────────────────
+
+   Two things on it, in this order:
+
+     1.4M                     ← the count, on top
+     Applications       [6]   ← the category, and how many microservices it holds
+
+   Everything else that used to be on the card is gone from it: the stacked mix bar,
+   the Info / Warn / Error / Debug chips, and the share of the estate.
+
+   None of it has gone from the SCREEN. The four severity counts are columns on the
+   members table below, per microservice, which is where a number you might act on
+   belongs; the share was the one figure with no home there, and it was also the one
+   the tile could work out for itself — a grid of counts already shows which
+   category carries the volume, which is the only question the percentage was
+   answering. On the tile they were six figures competing with the one figure the
+   tile exists to report, on every card at once.
+
+   What that buys is the geometry: the tile is now the same two-band object as
+   `.an-stat` on the Category Table face, drawn to the same figures — 0.7rem/0.8rem
+   of padding, a 0.3rem rhythm, a 1.45rem headline — at ~69px tall and 190px wide
+   instead of ~140px tall and 340px wide.
+
+   THE ORDER IS SET HERE, NOT IN THE JSX. The component emits the name block first
+   and the figure block second; `grid-template-areas` puts the figure on top
+   without touching AnalyticsCategoryBoardView. Safe to do visually because the
+   card is a single <button> — the spans inside it are not focusable, so there is
+   no focus order for the swap to disagree with.
+*/
+.analytics-shell .acb-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'total'
+    'top';
+  align-content: start;
+  row-gap: 0.3rem;
+  padding: 0.7rem 0.8rem;
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-row);
+}
+
+/*
+   The severity elements, off the tile.
+
+   Hidden rather than deleted from the component, deliberately. CategoryCard still
+   renders them, SeverityBar still works, and the flip deck still mounts the same
+   view — so this is one line to reverse and nothing else on the face had to be
+   touched to make the tile two bands. `display: none` takes them out of the
+   accessibility tree as well as the layout, so nothing is announced that cannot
+   be seen.
+
+   `.acb-bar--empty` is named alongside `.acb-bar` because SeverityBar renders one
+   OR the other, and a category with no logs in range emits the empty rail.
+*/
+.analytics-shell .acb-bar,
+.analytics-shell .acb-bar--empty,
+.analytics-shell .acb-card-legend {
+  display: none;
+}
+
+/*
+   MUST stay after the rule above. `.acb-card--skeleton` in
+   analytics-category-board.css is (0,1,0) and sets `display: flex` for its three
+   placeholder bars; the (0,2,0) grid above would otherwise capture the loading
+   card too and scatter three skeletons through named areas none of them claim.
+*/
+.analytics-shell .acb-card--skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.analytics-shell .acb-card:hover {
+  border-color: var(--set-accent);
+  background: var(--set-row-hover);
+}
+
+/* Inside the card, not around it: at 8px gaps an outset ring bleeds into the
+   neighbouring tile. */
+.analytics-shell .acb-card:focus-visible {
+  outline: 2px solid var(--set-accent);
+  outline-offset: -2px;
+}
+
+/* Centre, not baseline. The count beside the name is a fixed 18px box, and on a
+   baseline it hangs a pixel low against a name that may have wrapped. */
+.analytics-shell .acb-card-top {
+  grid-area: top;
+  align-items: center;
+}
+
+.analytics-shell .acb-card-name {
+  color: var(--set-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+/* The Settings badge geometry — an 18px square, same as the fired-alerts count —
+   moved onto the tab fill. It sat on `--company-bg`, which is now the CARD's
+   surrounding colour and would have left it invisible. */
+.analytics-shell .acb-card-children {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 0.3rem;
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink-dim);
+  font-size: 0.66rem;
+  font-weight: 600;
+  box-sizing: border-box;
+}
+
+/* The card's headline, and now the only number on the tile. `align-items: baseline`
+   is left in place though it has a single child again: it costs nothing, and it is
+   what keeps the figure sitting correctly if anything is ever put beside it. */
+.analytics-shell .acb-card-total {
+  grid-area: total;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.analytics-shell .acb-card-total-value {
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+/*
+   The share of the estate, off the tile.
+
+   Hidden the same way and for the same reason as the severity chips above: the
+   component still renders it, `formatShare` still works, and the flip deck still
+   mounts the same view, so this is one line to reverse. `display: none` takes it out
+   of the accessibility tree too, so nothing is read out that cannot be seen.
+
+   No styling rule for it, deliberately — see the note under the severity elements.
+*/
+.analytics-shell .acb-card-share {
+  display: none;
+}
+
+/*
+   Selected: THE BORDER, AND ONLY THE BORDER.
+
+   No tinted fill. The selected tile used to take the Settings badge treatment — a
+   teal-tinted background under an accent edge — and on a grid of tiles that reads
+   as the whole tile changing state rather than as one tile being picked out, which
+   is a lot of colour to spend on "you clicked this".
+
+   So the fill is restated as the plain band tone (the base rule for a selected card
+   is (0,2,0), the same weight as this file's own `.acb-card`, so it has to be said
+   outright rather than left to the cascade) and the accent goes on the edge alone.
+
+   The edge is drawn as a 1px inset ring ON TOP of the 1px border, so it reads as a
+   2px accent outline while the box stays exactly 1px thick. Widening the real
+   border instead would reflow the whole grid by a pixel every time a tile was
+   picked, and every other tile would twitch.
+*/
+.analytics-shell .acb-card.is-selected {
+  border-color: var(--set-accent);
+  background: var(--set-row);
+  box-shadow: inset 0 0 0 1px var(--set-accent);
+}
+
+/* Hover stays a fill, and stays quieter than the selection: one is "the pointer is
+   here", the other is "this is the category on screen below". */
+.analytics-shell .acb-card.is-selected:hover {
+  background: var(--set-row-hover);
+}
+
+/*
+   Registered but silent. The blanket `opacity: 0.62` is lifted most of the way
+   back: at #313131 on #262626 there is not much contrast to spend, and a tile
+   faded that far stopped reading as "a category with no logs" and started reading
+   as "a tile that failed to load". The finding is carried where it belongs
+   instead — on the figure that is zero.
+*/
+.analytics-shell .acb-card.is-silent {
+  opacity: 0.85;
+}
+
+.analytics-shell .acb-card.is-silent .acb-card-total-value {
+  color: var(--set-ink-faint);
+}
+
+/* No rules for the mix bar, `.acb-chip*` or `.acb-dot`. All three only ever
+   appeared on the tile, and all three are `display: none` above — styling a hidden
+   element is a rule nobody can check and the next person has to reason about. If
+   the severity breakdown comes back to the tile, so does its block. */
+
+/* ── Members panel ───────────────────────────────────────────────────────── */
+
+/*
+   The panel stops being a card inside a card: no border, no fill, and its rows
+   become bands on the one card the panel sits in. `--acb-cols`, declared on this
+   same element in analytics-category-board.css, is untouched — the header and
+   every row inherit their seven-column grid from it, and losing that would let a
+   row's Error count land under the header's Debug.
+*/
+/*
+   THE TABLE IS THE SCROLLER. It takes whatever height the fixed cards leave and
+   scrolls its rows inside itself, which is what keeps the cards on screen while a
+   long list of microservices is read.
+
+   `overflow: auto` on both axes, not the base file's `hidden`. That `hidden` was
+   there to clip the panel's 6px corner radius; there is no radius on this spec, and
+   left in place it swallowed data — the seven columns are `minmax()` minimums, so a
+   row too wide for the card was CLIPPED by the panel with nothing anywhere to
+   scroll it back. `auto` scrolls it instead.
+
+   It is also what gives the column headings something to stick to: `hidden` made
+   this element a scrollport that never scrolled, so `position: sticky` on the
+   heading row had nothing to pin against and the labels drifted away with the rows.
+
+   `min-height` is a floor for the squeeze. The cards above are `flex: 0 0 auto`, so
+   on a short window this is the element that gives way, and without a floor it
+   would give way to nothing — the table would collapse to its heading row and the
+   rows would be reachable only by scrolling the outer region. 180px is about five
+   bands: enough for the table to still read as a table.
+*/
+.analytics-shell .acb-panel {
+  flex: 1 1 auto;
+  min-height: 180px;
+  gap: 8px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow: auto;
+}
+
+/*
+   Column headings: full-strength white, unspaced, pinned to the top of the table
+   they label. The rule under them goes — the top edge of the first band is the line
+   that looks like one.
+
+   Their padding is `--set-cell-pad`, matching the ROWS rather than the sum of the
+   two insets, because the 13px band inset is now carried by `.acb-scroll`'s padding
+   outside this scroller: 13px on the panel plus cell-pad here puts the heading text
+   at band-inset + cell-pad from the card's edge, exactly over the columns of the
+   rows below and exactly where every other column heading on this spec sits.
+
+   The full-bleed negative margin this rule used to carry is gone with it. It was
+   there to cover the gutters when the headings pinned to the OUTER region and the
+   cards slid past either side of them; inside its own scroller the band spans the
+   full width on its own, and a negative margin here would just overflow the
+   scroller's inline-start edge and be clipped.
+*/
+.analytics-shell .acb-panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.85rem var(--set-cell-pad);
+  border-bottom: none;
+  background: var(--set-panel);
+  color: var(--set-ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* A member row is a 35px band, like every row on this spec. `flex: 0 0 auto` for
+   the same reason the Drill Table's rows need it — as flex children of a
+   gap-spaced column they would otherwise shrink out of the geometry. */
+.analytics-shell .acb-row {
+  flex: 0 0 auto;
+  min-height: 35px;
+  padding: 2px var(--set-cell-pad);
+  border-bottom: none;
+  border-radius: 0;
+  background: var(--set-row);
+}
+
+/*
+   "Registered, enabled, and silent." A band like the rows, keeping its warn-tinted
+   left edge — the edge is the whole point, and it is an inset shadow so it costs
+   the band no layout. Still deliberately not an error banner: nothing has failed.
+*/
+.analytics-shell .acb-silent {
+  padding: 0.5rem var(--set-cell-pad);
+  border-bottom: none;
+  background: var(--set-row);
+}
+
+.analytics-shell .acb-silent-text {
+  color: var(--set-ink-dim);
+}
+
+/* The twin of `.an-foot` above. */
+.analytics-shell .acb-foot {
+  padding: 0.3rem 0.9rem;
+  border-top: none;
+  color: #c4c4c4;
+  font-size: 0.74rem;
+}
+
+/* ── Narrow windows ───────────────────────────────────────────────────────── */
+
+/*
+   Only the tab padding and the cell inset, matching iam.css and
+   alerts-settings.css: the 12px shell inset, the 19px strip offset and the 11px
+   frame are absolute figures from the spec and hold at every width.
+
+   The cell inset does have to give, though. `--set-cell-pad` is 1.35rem on each
+   side of every band, and both faces have seven columns whose minimum widths
+   analytics-category-board.css already tightens at this breakpoint — 43px of
+   padding on top of that is what pushes a seven-figure count into an ellipsis.
+*/
+@media (max-width: 1080px) {
+  .analytics-shell {
+    --set-cell-pad: 0.7rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .analytics-shell .analytics-shell-tab {
+    padding: 0 0.5rem;
+  }
+}
+
+/*
+   No narrow-window override for the tile any more. It is two stacked bands at
+   190px, which is narrower than a phone in portrait, so there is nothing left for a
+   breakpoint to rearrange — `auto-fill` drops it to a single column on its own and
+   the tile is unchanged inside it.
+*/

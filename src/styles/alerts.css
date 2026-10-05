@@ -1,0 +1,3000 @@
+/* ==========================================================================
+   Alerts screen — folders rail, alert list, the editor, and the import view.
+
+   Reuses the existing chrome wherever it already exists rather than restyling
+   it: .tv-tabs/.tv-tab for the All / Scheduled / Real time strip, .tb-switch
+   for every toggle, .results-bar-btn for icon buttons, and the .iam-* footer
+   and search primitives. Only what is genuinely new to this screen lives here,
+   which is why an alert row looks like an IAM row and a toggle here behaves
+   exactly like the one on the Logs toolbar.
+   ========================================================================== */
+
+/* ── Layout: folders rail + main column ─────────────────────────────────── */
+.alerts-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.alerts-body {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.alerts-rail {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 230px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+.alerts-rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.alerts-rail-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.alerts-rail-search {
+  flex-shrink: 0;
+  margin: 0.55rem 0.6rem;
+}
+
+.alerts-rail-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 0.4rem 0.5rem;
+}
+
+.alerts-folder {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  font-size: 0.83rem;
+  text-align: left;
+}
+
+.alerts-folder:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg);
+}
+
+.alerts-folder.is-active {
+  color: #fff;
+  background: var(--accent-color);
+  font-weight: 600;
+}
+
+.alerts-folder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Per-folder delete, revealed on hover so the rail stays quiet at rest.
+   Never rendered for the "default" folder — OpenObserve's root cannot be
+   removed, and a button that always fails is worse than no button. */
+.alerts-folder-x {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
+  opacity: 0;
+}
+
+.alerts-folder:hover .alerts-folder-x,
+.alerts-folder-x:focus-visible {
+  opacity: 0.75;
+}
+
+.alerts-folder-x:hover {
+  opacity: 1;
+  background: rgba(211, 47, 47, 0.22);
+  color: #ffffff;
+}
+
+.alerts-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+/* ── Header row: title, tabs, search, folder scope, actions ─────────────── */
+.alerts-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.alerts-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.alerts-head-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+/* Primary action. The only filled accent button on the screen, so "New alert"
+   is unambiguous next to Import. */
+.alerts-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 28px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--accent-color);
+  border-radius: 5px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.alerts-btn-primary:hover {
+  filter: brightness(1.12);
+}
+
+.alerts-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.alerts-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 28px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.alerts-btn-ghost:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.alerts-btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Alert table ────────────────────────────────────────────────────────── */
+.alerts-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.alerts-body-rows {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.alerts-row {
+  display: grid;
+  align-items: center;
+  column-gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+}
+
+/* Three column sets, one per tab. Real time alerts have no evaluation window
+   or cadence — the columns are absent rather than shown empty, matching the
+   reference and avoiding two dead columns on that tab. */
+.alerts-table--all .alerts-row {
+  grid-template-columns:
+    34px 44px minmax(150px, 1.8fr) minmax(120px, 1.1fr)
+    minmax(96px, 0.8fr) minmax(84px, 0.7fr)
+    minmax(120px, 1fr) minmax(120px, 1fr) minmax(110px, 0.9fr)
+    minmax(74px, 0.6fr) minmax(96px, 0.8fr);
+}
+
+.alerts-table--scheduled .alerts-row {
+  grid-template-columns:
+    34px 44px minmax(150px, 1.8fr) minmax(130px, 1.2fr)
+    minmax(100px, 0.85fr) minmax(90px, 0.75fr)
+    minmax(130px, 1.05fr) minmax(130px, 1.05fr)
+    minmax(74px, 0.6fr) minmax(96px, 0.8fr);
+}
+
+.alerts-table--realtime .alerts-row {
+  grid-template-columns:
+    34px 44px minmax(180px, 2.4fr) minmax(150px, 1.3fr)
+    minmax(140px, 1.1fr) minmax(140px, 1.1fr)
+    minmax(74px, 0.6fr) minmax(96px, 0.8fr);
+}
+
+.alerts-row--head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.alerts-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alerts-body-rows .alerts-row:hover {
+  background: var(--hover-bg);
+}
+
+/* A disabled alert is not watching anything. Dimming the row makes that
+   readable at a glance instead of needing the Status column to be read. */
+.alerts-row.is-disabled .alerts-name,
+.alerts-row.is-disabled .alerts-dim,
+.alerts-row.is-disabled .alerts-owner {
+  opacity: 0.5;
+}
+
+.alerts-num {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.alerts-name {
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.alerts-name:hover {
+  color: var(--accent-color);
+  text-decoration: underline;
+}
+
+/* The same name, for a user who may not open the editor. Keeps the weight and colour
+   so the column still reads as the row's title, and drops the pointer and the hover
+   so it stops advertising a click that is not there. */
+.alerts-name--static,
+.alerts-name--static:hover {
+  color: var(--text-primary);
+  cursor: default;
+  text-decoration: none;
+}
+
+.alerts-owner {
+  color: var(--accent-color);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.alerts-dim {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.alerts-mono {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.alerts-type {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--hover-bg);
+  color: var(--text-primary);
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.alerts-type--realtime {
+  background: rgba(245, 124, 0, 0.18);
+  color: #000000;
+}
+
+.alerts-type--scheduled {
+  background: rgba(0, 150, 143, 0.18);
+  color: var(--accent-color);
+}
+
+.alerts-type--anomaly_detection {
+  background: rgba(126, 87, 194, 0.2);
+  color: #ffffff;
+}
+
+.alerts-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.alerts-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.alerts-action:hover:not(:disabled) {
+  color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.alerts-action--danger:hover:not(:disabled) {
+  color: #ffffff;
+  background: rgba(211, 47, 47, 0.46);
+}
+
+.alerts-action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.alerts-state {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.alerts-state-error {
+  color: var(--error-color);
+}
+
+/* ── Inline banner, for write failures and confirmations ────────────────── */
+.alerts-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.78rem;
+}
+
+.alerts-banner--error {
+  background: rgba(211, 47, 47, 0.12);
+  color: #ffffff;
+}
+
+.alerts-banner--ok {
+  background: rgba(56, 142, 60, 0.14);
+  color: #000000;
+}
+
+/* Degraded, not failed — for a screen that still shows something true while a
+   source is unhealthy. Currently unused: the two banners that had this tone were
+   removed from the Alerts screen. Kept because the tone is the missing middle
+   between --ok and --error, and re-deriving it is the kind of thing that ends up
+   as a fourth slightly-different amber. */
+.alerts-banner--warn {
+  background: rgba(245, 166, 35, 0.14);
+  color: #000000;
+}
+
+.alerts-banner-text {
+  flex: 1;
+  min-width: 0;
+  /* A rejection reason from OpenObserve can be long and is the whole point of
+     the banner, so it wraps rather than being clipped. */
+  overflow-wrap: anywhere;
+}
+
+.alerts-banner-x {
+  flex-shrink: 0;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.75;
+}
+
+.alerts-banner-x:hover {
+  opacity: 1;
+}
+
+/* ══ Editor ═══════════════════════════════════════════════════════════════ */
+
+.alerts-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Title strip, pinned above the two columns.
+   The alert's name is the page title here rather than one labelled field in a
+   row of four — see the note in AlertEditor's topbar markup. */
+.ae-topbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  flex-shrink: 0;
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.ae-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.ae-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+/* Borderless until focused: it has to read as a heading at rest and as an
+   input the moment it is being used. The dotted underline is the only standing
+   hint that it is editable, alongside the pencil. */
+.ae-title-input {
+  /* Width comes from the `size` attribute, so no width here — see the note on
+     the input in AlertEditor. */
+  min-width: 0;
+  padding: 0.1rem 0.15rem;
+  border: none;
+  border-bottom: 1px dashed transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.ae-title-input::placeholder {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.ae-title-input:hover {
+  border-bottom-color: var(--border-color);
+}
+
+.ae-title-input:focus {
+  outline: none;
+  border-bottom-color: var(--accent-color);
+  background: var(--bg-color);
+}
+
+.ae-title-pencil {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ae-title-pencil:hover {
+  color: var(--accent-color);
+}
+
+/* "Add Alert in <folder>" — the folder is a control inside a sentence, so it
+   is styled as text with a caret rather than as a boxed select. */
+.ae-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+/* The folder picker in the subtitle: a SearchableSelect shrunk to subtitle
+   scale, so it sits in the sentence rather than looking like a form field that
+   wandered up into the title bar. */
+.ssel--folder {
+  width: 190px;
+}
+
+.ssel--folder .ssel-face {
+  height: 22px;
+  padding: 0 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.ae-folder-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ae-folder-add:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.ae-topbar-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-top: 0.15rem;
+}
+
+/* Square icon-only button, sized to match .ae-input/.ae-select's 28px. */
+.ae-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ae-icon-btn:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.ae-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ae-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  color: var(--text-secondary);
+}
+
+.ae-back:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.ae-label {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ae-req {
+  color: var(--error-color);
+}
+
+.ae-cols {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.ae-left {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 62%;
+  min-width: 0;
+  min-height: 0;
+  gap: 0.75rem;
+  overflow-y: auto;
+}
+
+.ae-right {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 38%;
+  min-width: 0;
+  min-height: 0;
+  gap: 0.75rem;
+}
+
+.ae-card {
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+/* Preview and Summary fill the leftover height so the right column does not
+   end in a ragged gap. */
+.ae-card--fill {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Section heading with the reference's accent tick on the left. */
+.ae-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.ae-card-head::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--accent-color);
+}
+
+/* Preview/Summary headings are centred and have no tick. */
+.ae-card-head--plain {
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.ae-card-head--plain::before {
+  display: none;
+}
+
+.ae-card-body {
+  padding: 0.85rem;
+}
+
+.ae-card--fill .ae-card-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Stream Config row: three labelled selects side by side, wrapping narrow. */
+.ae-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ae-field {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+/* Stacked label/control, for the Settings rows. */
+.ae-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.4rem 0;
+}
+
+.ae-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 170px;
+  flex-shrink: 0;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* Shared control skin, so a select, an input and a read-only value all line
+   up on the same baseline and share one focus treatment. */
+.ae-input,
+.ae-select {
+  height: 28px;
+  min-width: 0;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
+.ae-select {
+  cursor: pointer;
+}
+
+.ae-input:focus,
+.ae-select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.ae-input:disabled,
+.ae-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Takes the leftover width in an .ae-inline row — the Stream Name select, whose
+   values are long and whose neighbours are fixed-width enums. */
+.ae-field--grow {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ae-input--num {
+  width: 90px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ae-input--grow {
+  flex: 1;
+  min-width: 160px;
+}
+
+.ae-select--grow {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* Unit suffix pinned to a number input ("10 | Minutes"). */
+.ae-unit {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border-color);
+  border-left: none;
+  border-radius: 0 5px 5px 0;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.ae-unit-group {
+  display: inline-flex;
+  align-items: center;
+}
+
+.ae-unit-group .ae-input {
+  border-radius: 5px 0 0 5px;
+}
+
+.ae-hint {
+  margin-top: 0.3rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+/* Explains the absent window/cadence/threshold rows on a realtime alert. Sits in
+   the gap those rows would occupy, so the difference reads as intentional rather
+   than as a screen that failed to render. */
+.ae-realtime-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--accent-color);
+  border-radius: 5px;
+  background: var(--hover-bg);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.ae-realtime-note strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.ae-error {
+  color: var(--error-color);
+  font-size: 0.74rem;
+}
+
+/* Inner tab strip: a SEGMENTED control, as in the reference.
+   With four tabs, underlined text labels ran together into what read as a
+   sentence; pills in a tinted trough give each choice a boundary. */
+.ae-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin: 0.55rem 0.85rem;
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--company-bg);
+  overflow-x: auto;
+  /* The strip is the one thing that must stay reachable on a narrow window, so
+     it scrolls rather than wrapping into two rows and shifting the card. */
+  scrollbar-width: none;
+}
+
+.ae-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.ae-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ae-tab:hover {
+  color: var(--text-primary);
+}
+
+/* The active pill is raised out of the trough rather than merely recoloured —
+   at four tabs, colour alone was not enough to find the current one. */
+.ae-tab.is-active {
+  background: var(--surface-color);
+  color: var(--accent-color);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.ae-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.9;
+}
+
+/* Count of what is configured on a tab that is not currently open. Comparison
+   windows and deduplication fields change what the alert does while being
+   invisible from every other tab, so the tab strip carries the fact that they
+   exist. */
+.ae-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 0.35rem;
+  padding: 0 0.25rem;
+  border-radius: 8px;
+  background: var(--accent-color);
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+/* ── the warning tier ───────────────────────────────────────────────────────
+   The optional second threshold, shown inline after the critical one. Tinted
+   rather than plain so the two levels are distinguishable at a glance in a row
+   that otherwise holds two identical-looking number inputs.
+   ────────────────────────────────────────────────────────────────────────── */
+.ae-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.35rem 0.15rem 0.5rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 5px;
+  background: var(--hover-bg);
+}
+
+/* The operator is shared with the critical threshold and is not editable here,
+   so it is text rather than a second select that would imply it could differ. */
+.ae-warn-op {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Remove affordance shared by the warning tier, comparison windows and
+   variable rows — all three are "one of a list, delete it". */
+.ae-warn-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ae-warn-x:hover {
+  background: var(--hover-bg);
+  color: var(--error-color);
+}
+
+/* A row whose control is taller than a single 28px input (the token input),
+   so the label sits at the top rather than floating in the vertical middle. */
+.ae-row--tall {
+  align-items: flex-start;
+}
+
+.ae-row--tall .ae-row-label {
+  padding-top: 0.3rem;
+}
+
+/* ── comparison windows ─────────────────────────────────────────────────── */
+
+.ae-window {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.7rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--accent-color);
+  border-radius: 5px;
+  background: var(--hover-bg);
+}
+
+.ae-window-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.ae-window-title {
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* ── additional variables ───────────────────────────────────────────────────
+   A name/value pair per row. The name is fixed-width so the value inputs line
+   up into a column instead of stepping in and out with the name length.
+   ────────────────────────────────────────────────────────────────────────── */
+.ae-varrow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.ae-varrow > .ae-input:first-child {
+  width: 150px;
+  flex-shrink: 0;
+}
+
+/* ── TokenInput ─────────────────────────────────────────────────────────────
+   Chip list you can type into (src/components/alerts/TokenInput.jsx), used for
+   tags and deduplication fields. The box grows with its chips, which is why its
+   height is min-height rather than the 28px the other form controls share.
+   ────────────────────────────────────────────────────────────────────────── */
+.tki {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 200px;
+  /* Capped so it lines up with the other controls in a Settings row instead of
+     running to the card edge — a chip list is a short list, and a box three
+     times wider than its content reads as an empty text area. */
+  max-width: 460px;
+}
+
+.tki-box {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  min-height: 28px;
+  padding: 0.2rem 0.35rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  cursor: text;
+}
+
+.tki-box:focus-within {
+  border-color: var(--accent-color);
+}
+
+.tki-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.2rem 0.1rem 0.4rem;
+  border-radius: 10px;
+  background: var(--company-bg);
+  color: var(--text-primary);
+  font-size: 0.74rem;
+}
+
+.tki-chip-x {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.15rem;
+}
+
+.tki-chip-x:hover {
+  color: var(--error-color);
+}
+
+/* Borderless and flexible: it is the caret inside the box, not a control of
+   its own, and it has to be wide enough to type into once chips fill the row. */
+.tki-input {
+  flex: 1;
+  min-width: 90px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 0.15rem 0.1rem;
+}
+
+.tki-suggest {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.tki-suggest-chip {
+  padding: 0.1rem 0.4rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.tki-suggest-chip:hover {
+  border-style: solid;
+  border-color: var(--accent-color);
+  color: var(--text-primary);
+}
+
+.tki.is-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ── SearchableSelect ───────────────────────────────────────────────────────
+   Filterable single-select (src/components/common/SearchableSelect.jsx).
+   Intentionally a near-copy of the .sms-* picker in logs-query.css so the two
+   controls read as one component; the differences are that the face matches
+   .ae-select's 28px form-control height rather than the toolbar's 30px, and the
+   menu is position:fixed. See the component's header for why fixed.
+   ────────────────────────────────────────────────────────────────────────── */
+.ssel {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.ssel-face {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  height: 28px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.ssel-face:hover:not(:disabled),
+.ssel-face.is-open {
+  border-color: var(--accent-color);
+}
+
+.ssel-face:focus-visible {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.ssel-face:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Placeholder state is dimmed so "nothing chosen" is visible at a glance on a
+   form where most fields are required. */
+.ssel-face:not(.has-value) .ssel-face-text {
+  color: var(--text-secondary);
+}
+
+/* A value the option list no longer contains — warning-coloured because it
+   usually means the stream or field was deleted underneath the alert. */
+.ssel-face.is-missing .ssel-face-text {
+  color: var(--warn-color);
+}
+
+.ssel-face-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ssel-clear,
+.ssel-caret {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.ssel-clear {
+  padding: 0 0.15rem;
+  border-radius: 3px;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ssel-clear:hover {
+  color: var(--error-color);
+  background: var(--hover-bg);
+}
+
+.ssel-caret {
+  font-size: 0.6rem;
+}
+
+/* Fixed, so no scrolling ancestor can clip it. left/top/width are set inline
+   from the trigger's measured rect. z-index clears the modal layer (200) so the
+   control still works if it is ever used inside a dialog. */
+.ssel-menu {
+  position: fixed;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  /* The trigger can be narrow (the condition column select); the menu should
+     still be wide enough to read a long metric name in. */
+  min-width: 240px;
+}
+
+.ssel-search {
+  flex-shrink: 0;
+  padding: 0.35rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ssel-search input {
+  width: 100%;
+  height: 26px;
+  padding: 0 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.75rem;
+}
+
+.ssel-search input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.ssel-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.25rem 0.45rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ssel-count {
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+}
+
+/* Capped and scrolled — this list can hold ~2,000 metric streams. max-height is
+   also set inline, to whatever room the viewport actually has. */
+.ssel-list {
+  flex: 1;
+  min-height: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 0.2rem;
+}
+
+.ssel-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.32rem 0.45rem;
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 0.76rem;
+  text-align: left;
+}
+
+/* Hover and keyboard cursor share one treatment, so arrowing and pointing look
+   the same. */
+.ssel-item.is-cursor {
+  background: var(--hover-bg);
+}
+
+.ssel-item.is-on {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.ssel-item.is-missing {
+  color: var(--warn-color);
+}
+
+.ssel-item-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* Metric and field names are identifiers; monospace makes the long
+     catalina_* ones scannable by their differing tails. */
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.ssel-empty {
+  padding: 0.75rem 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Sizing helpers, so callers do not need inline styles. */
+.ssel--grow {
+  flex: 1;
+  min-width: 150px;
+}
+
+.ssel--col {
+  flex: 1 1 190px;
+  min-width: 140px;
+}
+
+/* ── Condition builder ──────────────────────────────────────────────────── */
+
+.cb-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* The "filters" pill above the condition card — the reference's label for this
+   block, and its collapse control. */
+.cb-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cb-filters:hover {
+  border-color: var(--accent-color);
+  color: var(--text-primary);
+}
+
+.cb-filters.is-open {
+  color: var(--text-primary);
+}
+
+.cb-filters-icon {
+  font-size: 0.66rem;
+  opacity: 0.75;
+}
+
+/* Points down while open (the reference's resting state) and rotates to point
+   right when the block is folded away. */
+.cb-filters-caret {
+  font-size: 0.7rem;
+  transition: transform 0.12s ease;
+}
+
+.cb-filters:not(.is-open) .cb-filters-caret {
+  transform: rotate(-90deg);
+}
+
+.cb-collapsed {
+  padding: 0.6rem 0.7rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+.cb-collapsed strong {
+  color: var(--text-primary);
+}
+
+/* A group is drawn as an indented, bordered block so nesting is visible
+   structurally rather than only through the and/or words. */
+.cb-group {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.cb-group--nested {
+  margin-left: 0.5rem;
+  background: var(--hover-bg);
+}
+
+/* Reorder arrows, present only while reorder mode is on. */
+.cb-move {
+  display: inline-flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 1px;
+}
+
+/* Two stacked 14px halves rather than one 28px button: the pair has to fit the
+   height of a condition row without making the row taller. */
+.cb-move-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: var(--bg-color);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cb-move-btn:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.cb-move-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* The Reorder toolbar link while its mode is active. */
+.cb-add.is-on {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.cb-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cb-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* The and/or joiner. Clicking it flips the whole group's operator, which is
+   how OpenObserve models it — a group is all-AND or all-OR, not a mix. */
+.cb-join {
+  min-width: 46px;
+  height: 24px;
+  padding: 0 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--accent-color);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.cb-join:hover {
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+/* Non-interactive joiner shown on the first row, to keep rows aligned.
+   Lower-case, unlike the AND/OR joiners: "if" is prose introducing the rule,
+   not an operator, and the reference sets it the same way. */
+.cb-join--static {
+  border-color: transparent;
+  background: none;
+  color: var(--text-secondary);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: default;
+}
+
+.cb-join--static:hover {
+  border-color: transparent;
+  background: none;
+}
+
+.cb-col {
+  flex: 1 1 190px;
+  min-width: 140px;
+}
+
+.cb-op {
+  width: 128px;
+  flex-shrink: 0;
+}
+
+.cb-val {
+  flex: 1 1 150px;
+  min-width: 110px;
+}
+
+.cb-x {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.cb-x:hover {
+  color: #ffffff;
+  background: rgba(211, 47, 47, 0.46);
+}
+
+.cb-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.cb-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--accent-color);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.cb-add:hover {
+  text-decoration: underline;
+}
+
+.cb-empty {
+  padding: 0.75rem 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+/* Ignore-case toggle, sized down to sit inside a condition row. */
+.cb-case {
+  flex-shrink: 0;
+  height: 24px;
+  font-size: 0.66rem;
+}
+
+/* ── Preview / Summary panels ───────────────────────────────────────────── */
+.ae-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  height: 100%;
+  min-height: 140px;
+  padding: 1.5rem 1rem;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  text-align: center;
+}
+
+.ae-placeholder svg {
+  opacity: 0.35;
+}
+
+/* Summary is a definition list: label left, value right, one per line. */
+.ae-summary {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) 1fr;
+  gap: 0.4rem 0.75rem;
+  font-size: 0.79rem;
+}
+
+.ae-summary dt {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.ae-summary dd {
+  margin: 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.ae-summary-sql {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  white-space: pre-wrap;
+}
+
+/* Preview table: the rows the alert's own query returns right now. */
+.ae-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.73rem;
+}
+
+.ae-preview-table th,
+.ae-preview-table td {
+  padding: 0.3rem 0.45rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 190px;
+}
+
+.ae-preview-table th {
+  position: sticky;
+  top: 0;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.ae-preview-table td {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.ae-preview-count {
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+/* Footer with Cancel / Save. */
+.ae-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  padding: 0.6rem 0.9rem;
+  border-top: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.ae-foot-left {
+  margin-right: auto;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+/* ══ Import ═══════════════════════════════════════════════════════════════ */
+
+.ai-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.ai-cols {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.ai-left {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 62%;
+  min-width: 0;
+  min-height: 0;
+  gap: 0.75rem;
+}
+
+.ai-right {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 38%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Drop zone. Dashed at rest, accent while a file is over it. */
+.ai-drop {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-color);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.ai-drop:hover,
+.ai-drop.is-over {
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.ai-drop-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-drop-x {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.ai-drop-x:hover {
+  color: #ef5350;
+}
+
+/* Monospace JSON editor. A plain textarea on purpose: the app has no code-editor
+   dependency and adding one for this screen would ship a large bundle for a box
+   that is pasted into once. Line numbers are omitted rather than faked, since a
+   misaligned gutter is worse than none. */
+.ai-editor {
+  flex: 1;
+  min-height: 220px;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.55;
+  resize: none;
+  tab-size: 2;
+}
+
+.ai-editor:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.ai-editor--invalid {
+  border-color: var(--error-color);
+}
+
+/* Output Messages: one line per imported document. */
+.ai-out {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.6rem 0.85rem;
+}
+
+.ai-out-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.78rem;
+}
+
+.ai-out-badge {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 0.1rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.ai-out-badge--ok {
+  background: rgba(56, 142, 60, 0.2);
+  color: #000000;
+}
+
+.ai-out-badge--fail {
+  background: rgba(211, 47, 47, 0.2);
+  color: #ffffff;
+}
+
+.ai-out-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ai-out-msg {
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* ══ Modals and drawers ═══════════════════════════════════════════════════ */
+
+.alerts-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.alerts-modal {
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-color);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+}
+
+.alerts-modal--wide {
+  max-width: 560px;
+}
+
+.alerts-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.alerts-modal-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.alerts-modal-x {
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.alerts-modal-x:hover {
+  color: var(--text-primary);
+}
+
+.alerts-modal-body {
+  padding: 1rem;
+}
+
+.alerts-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Right-hand drawer, used by the IAM Update User panel. */
+.alerts-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.alerts-drawer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
+  border-left: 1px solid var(--border-color);
+  background: var(--surface-color);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45);
+}
+
+.alerts-drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+/* Stacked form field, for the drawer and modals. */
+.ae-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.9rem;
+}
+
+.ae-stack-label {
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.ae-stack .ae-input,
+.ae-stack .ae-select {
+  height: 32px;
+  width: 100%;
+}
+
+.ae-readonly {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+  .ae-cols,
+  .ai-cols {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .ae-left,
+  .ae-right,
+  .ai-left,
+  .ai-right {
+    flex: 0 0 auto;
+  }
+
+  .ae-card--fill {
+    flex: 0 0 auto;
+    min-height: 200px;
+  }
+}
+
+@media (max-width: 900px) {
+  .alerts-body {
+    flex-direction: column;
+  }
+
+  .alerts-rail {
+    width: 100%;
+    max-height: 190px;
+  }
+}
+
+/* ==========================================================================
+   AlertsShell — Rules / Fired sub-tab strip
+   ========================================================================== */
+
+
+.alerts-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.alerts-shell-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+.alerts-shell-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  border-radius: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.alerts-shell-tab:hover {
+  color: var(--text-primary);
+}
+
+.alerts-shell-tab--active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+  font-weight: 600;
+}
+
+.alerts-shell-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #b91c1c;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+
+.alerts-shell-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.alerts-shell-panel[hidden] {
+  display: none;
+}
+
+/* ==========================================================================
+   FiredAlertsPage — container
+   ========================================================================== */
+
+.fan-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  min-height: 0;
+  padding: 0.75rem;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   AlertSummaryCards
+   ========================================================================== */
+
+.fan-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+.fan-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-color);
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+  cursor: pointer;
+}
+
+.fan-card:hover {
+  border-color: var(--card-accent, var(--accent-color));
+  box-shadow: 0 0 0 1px var(--card-accent, var(--accent-color)),
+              0 4px 16px rgba(0,0,0,0.25);
+  transform: translateY(-1px);
+}
+
+.fan-card--active {
+  border-color: var(--card-accent, var(--accent-color));
+  background: color-mix(in srgb, var(--card-accent, var(--accent-color)) 10%, var(--surface-color));
+  box-shadow: 0 0 0 1px var(--card-accent, var(--accent-color));
+}
+
+.fan-card-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.fan-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.fan-card-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.fan-card-label {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ==========================================================================
+   AlertFilters
+   ========================================================================== */
+
+.fan-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.fan-select {
+  height: 30px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+
+.fan-select:focus {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+.fan-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 30px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+}
+
+.fan-search-wrap--wide {
+  flex: 1;
+  min-width: 140px;
+}
+
+.fan-search {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-family: var(--font-sans);
+}
+
+.fan-search::placeholder { color: var(--text-secondary); }
+
+.fan-filters-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.fan-last-fetched {
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.fan-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 28px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-family: var(--font-sans);
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.fan-btn-icon:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.fan-btn-icon--warn {
+  color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+/* ==========================================================================
+   AlertsTable
+   ========================================================================== */
+
+.fan-table-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-color);
+  overflow: hidden;
+}
+
+.fan-table-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.fan-table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.fan-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.fan-th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-align: left;
+  user-select: none;
+}
+
+.fan-th--sort {
+  cursor: pointer;
+}
+
+.fan-th--sort:hover {
+  color: var(--text-primary);
+}
+
+.fan-th--active {
+  color: var(--accent-color);
+}
+
+.fan-row {
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.fan-row:last-child { border-bottom: none; }
+
+.fan-row:hover { background: var(--hover-bg); }
+
+.fan-row--firing    { border-left: 3px solid #ef4444; }
+.fan-row--acknowledged { border-left: 3px solid #f59e0b; }
+.fan-row--resolved  { border-left: 3px solid #22c55e; }
+.fan-row--parse-error { border-left: 3px solid #f59e0b; background: rgba(245,158,11,0.04); }
+
+.fan-td {
+  padding: 0.55rem 0.75rem;
+  color: var(--text-primary);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.fan-td--name  { max-width: 240px; }
+.fan-td--mono  { font-family: var(--font-mono); font-size: 0.78rem; }
+.fan-td--ts    { color: var(--text-secondary); font-size: 0.78rem; }
+.fan-td--num   { text-align: right; font-variant-numeric: tabular-nums; }
+.fan-td--actions { width: 100px; }
+
+.fan-dim { color: var(--text-secondary); }
+.fan-mono { font-family: var(--font-mono); font-size: 0.78rem; }
+
+.fan-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow: hidden;
+}
+
+.fan-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fan-parse-err {
+  flex-shrink: 0;
+  display: flex;
+}
+
+.fan-ext-link {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  display: flex;
+  align-items: center;
+}
+
+.fan-ext-link:hover { opacity: 1; color: var(--accent-color); }
+
+/* Severity badge */
+.fan-sev {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.fan-sev--critical { background: rgba(220, 38, 38, 0.5);  color: #ffffff; }
+.fan-sev--error    { background: rgba(234, 88, 12, 0.5);  color: #000000; }
+.fan-sev--warning  { background: rgba(245, 158, 11, 0.5); color: #000000; }
+.fan-sev--info     { background: rgba(59, 130, 246, 0.5); color: #000000; }
+
+/* State badge */
+.fan-state {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.fan-state--firing        { background: rgba(239, 68, 68, 0.48);  color: #000000; animation: firing-pulse 2s ease-in-out infinite; }
+.fan-state--acknowledged  { background: rgba(245, 158, 11, 0.48); color: #000000; }
+.fan-state--resolved      { background: rgba(34, 197, 94, 0.48);  color: #000000; }
+.fan-state--auto          { background: rgba(107, 114, 128, 0.48);color: #ffffff; }
+
+@keyframes firing-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.65; }
+}
+
+/* Inline badges on the alert-name cell */
+.fan-badge {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.fan-badge--new-since-ack  { background: rgba(245, 158, 11, 0.5); color: #000000; }
+.fan-badge--episodes       { background: rgba(99, 102, 241, 0.5);  color: #000000; }
+
+/* Action buttons in the table row */
+.fan-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.fan-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  transition: background 0.12s, color 0.12s;
+}
+
+.fan-action:hover            { background: var(--hover-bg);             color: var(--text-primary); }
+.fan-action--ack:hover       { background: rgba(245, 158, 11, 0.45);       color: #000000; }
+.fan-action--resolve:hover   { background: rgba(34, 197, 94, 0.45);        color: #000000; }
+.fan-action:disabled         { opacity: 0.4; cursor: not-allowed; }
+
+/* Empty / error / loading states */
+.fan-state-msg {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.fan-state-msg--error { color: var(--error-color); }
+
+.fan-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 4rem;
+  color: var(--text-secondary);
+}
+
+.fan-empty-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fan-empty-sub {
+  font-size: 0.85rem;
+  text-align: center;
+  max-width: 360px;
+}
+
+.fan-loading-inline {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* Pagination footer */
+.fan-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.fan-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.fan-foot-total { font-size: 0.8rem; }
+
+.fan-foot-range { font-size: 0.78rem; }
+
+.fan-foot-size {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+
+.fan-foot-size select {
+  height: 26px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+}
+
+.fan-pager {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+.fan-pager:hover:not(:disabled) { color: var(--text-primary); border-color: var(--text-secondary); }
+.fan-pager:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ==========================================================================
+   AlertDetailsDrawer
+   ========================================================================== */
+
+.fan-dr-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  animation: fan-fade-in 0.15s ease;
+}
+
+@keyframes fan-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.fan-drawer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 500px;
+  height: 100%;
+  border-left: 1px solid var(--border-color);
+  background: var(--surface-color);
+  box-shadow: -16px 0 48px rgba(0, 0, 0, 0.5);
+  animation: fan-slide-in 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes fan-slide-in {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.fan-dr-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.fan-dr-head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.fan-dr-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 360px;
+}
+
+.fan-dr-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.fan-dr-ext {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--accent-color);
+}
+.fan-dr-ext:hover { text-decoration: underline; }
+
+.fan-dr-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  color: var(--text-secondary);
+}
+.fan-dr-close:hover { background: var(--hover-bg); color: var(--text-primary); }
+
+.fan-dr-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fan-dr-section {
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--bg-color) 40%, var(--surface-color));
+}
+
+.fan-dr-section-title {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+/* Meta grid */
+.fan-dr-meta { display: flex; flex-direction: column; gap: 0.2rem; }
+
+.fan-dr-meta-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.fan-dr-meta-label {
+  flex-shrink: 0;
+  width: 130px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.fan-dr-meta-value {
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.fan-dr-parse-error {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 5px;
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.3);
+  color: #000000;
+  font-size: 0.8rem;
+}
+
+/* Action row */
+.fan-dr-action-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Shared button styles for the drawer */
+.fan-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 30px;
+  padding: 0 1rem;
+  border-radius: 5px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: var(--accent-color);
+  color: #fff;
+  border: 1px solid var(--accent-color);
+  transition: filter 0.12s;
+}
+.fan-btn-primary:hover:not(:disabled) { filter: brightness(1.15); }
+.fan-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.fan-btn-primary--ack     { background: #d97706; border-color: #d97706; }
+.fan-btn-primary--resolve { background: #16a34a; border-color: #16a34a; }
+
+.fan-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 30px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.fan-btn-ghost:hover:not(:disabled) { border-color: var(--text-secondary); }
+.fan-btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Action form */
+.fan-dr-action-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fan-dr-note {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-family: var(--font-sans);
+  resize: vertical;
+}
+.fan-dr-note:focus { outline: 2px solid var(--accent-color); outline-offset: 1px; }
+
+.fan-dr-action-btns {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.fan-dr-action-error {
+  color: var(--error-color);
+  font-size: 0.8rem;
+}
+
+/* Banner */
+.fan-dr-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+.fan-dr-banner--ok {
+  background: rgba(34,197,94,0.14);
+  border: 1px solid rgba(34,197,94,0.35);
+  color: #000000;
+}
+.fan-dr-banner-x {
+  flex-shrink: 0;
+  color: inherit;
+  font-size: 1rem;
+  opacity: 0.7;
+}
+.fan-dr-banner-x:hover { opacity: 1; }
+
+.fan-dr-loading { color: var(--text-secondary); font-size: 0.82rem; }
+.fan-dr-err     { color: var(--error-color);    font-size: 0.82rem; }
+.fan-dr-empty   { color: var(--text-secondary); font-size: 0.82rem; font-style: italic; }
+
+/* ==========================================================================
+   Event timeline
+   ========================================================================== */
+
+.fan-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  position: relative;
+}
+
+.fan-timeline::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 8px;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-color);
+}
+
+.fan-tl-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.45rem 0 0.45rem 0;
+  position: relative;
+}
+
+.fan-tl-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  min-width: 0;
+}
+
+.fan-evt-dot {
+  display: block;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+  border: 2px solid var(--surface-color);
+  position: relative;
+  z-index: 1;
+}
+.fan-evt-dot--firing   { background: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.3); }
+.fan-evt-dot--acked    { background: #f59e0b; }
+.fan-evt-dot--resolved { background: #22c55e; }
+
+.fan-tl-event {
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--text-primary);
+}
+
+.fan-tl-item--firing       .fan-tl-event { color: #f87171; }
+.fan-tl-item--acknowledged .fan-tl-event { color: #fbbf24; }
+.fan-tl-item--resolved     .fan-tl-event { color: #4ade80; }
+
+.fan-tl-actor {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.fan-tl-ts {
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.fan-tl-note {
+  width: 100%;
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================================================
+   QuickActionDialog (FiredAlertsPage)
+   ========================================================================== */
+
+.fan-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(3px);
+  animation: fan-fade-in 0.15s ease;
+}
+
+.fan-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 440px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface-color);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  animation: fan-modal-up 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes fan-modal-up {
+  from { transform: scale(0.93) translateY(12px); opacity: 0; }
+  to   { transform: scale(1)    translateY(0);    opacity: 1; }
+}
+
+.fan-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem 0.65rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.fan-modal-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.fan-modal-x {
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.fan-modal-x:hover { background: var(--hover-bg); color: var(--text-primary); }
+
+.fan-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+}
+
+.fan-modal-text {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.fan-modal-note-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.fan-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem 0.85rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* ==========================================================================
+   Responsive adjustments
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .fan-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fan-drawer {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .fan-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .fan-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fan-search-wrap--wide {
+    min-width: unset;
+  }
+
+  .fan-filters-right {
+    margin-left: 0;
+  }
+}

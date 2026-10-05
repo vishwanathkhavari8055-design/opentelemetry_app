@@ -1,0 +1,490 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Settings → Resource — CPU, memory and NFS for the OpenObserve deployment.
+
+   NUMBERS ONLY. There is deliberately no chart, no gauge and no percentage bar
+   in this file. Where a share matters it is printed as a number beside the two
+   figures it was divided from. Keep it that way.
+
+   Everything is namespaced `rs-` and this file is imported last, so nothing here
+   can reach another screen. The few shared classes the markup does use
+   (`page-heading`, `ov-panel-icon`, `results-bar-btn`, `alerts-banner`) are
+   borrowed deliberately so the header furniture matches the sibling IAM tabs.
+
+   The view renders as a flex CHILD of `.iam-main`, which is a flex column — the
+   same situation `.iam-main > .pc-view` handles in iam.css. It has to grow into
+   the space and own its own scroll rather than stretch the panel.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.iam-main > .rs-view {
+  flex: 1;
+  min-height: 0;
+}
+
+.rs-view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  /* Every figure is read down a column and compared against the one above it, so
+     they all share digit widths. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+.rs-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.rs-head .page-heading {
+  margin-right: 0;
+}
+
+.rs-head-sub {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.rs-head-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.rs-asof {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* These metrics stop being scraped for long stretches, and every number on the
+   screen is only as current as this. Amber, not red: a stale reading is a caveat
+   on the figures, not a failure of them. */
+.rs-asof.is-stale {
+  color: var(--warn-color);
+  font-weight: 500;
+}
+
+/* ── Scroll body ────────────────────────────────────────────────────────── */
+
+.rs-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+
+/*
+   All four cards are exactly the same size, in both axes.
+
+   EQUAL WIDTH comes from an explicit column count rather than
+   `auto-fit, minmax(...)`. auto-fit derives the count from the available width,
+   which for four cards can land on three per row — leaving the fourth alone on
+   the second row, stretched to the full width of the panel. The counts below (4,
+   2, 1) all divide four exactly, so a row is never partially filled and every
+   card resolves to the same `1fr`.
+
+   EQUAL HEIGHT comes from `grid-auto-rows: 1fr` plus the default
+   `align-items: stretch` — there is deliberately no `align-items: start` here,
+   which would let each card shrink to its own content. In a grid whose own
+   height is indefinite (this one scrolls inside a flex column), `1fr` rows all
+   resolve to the tallest row's content, so the two-column and one-column layouts
+   stay uniform too, not just the single-row case.
+
+   The cards do not hold equal amounts of content — Memory carries an extra row
+   for the working-set figure — so `.rs-stats` below takes `flex: 1` to absorb
+   the difference at the bottom of the shorter cards.
+*/
+.rs-split {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 0.75rem;
+}
+
+/* This panel sits beside a 210px rail, so it runs out of width before the
+   viewport does. Halving rather than stepping to three keeps rows full. */
+@media (max-width: 1200px) {
+  .rs-split {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .rs-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.rs-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-color);
+}
+
+.rs-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.rs-card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Which pod or node the card describes. Truncates rather than wrapping — it is
+   an identifier, and the full value is in the title attribute. */
+.rs-card-scope {
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+/* The NFS filesystem picker, sitting where the other cards print static scope
+   text. Sized and coloured to read as that same caption until you reach for it —
+   it names what the card is showing, and only incidentally lets you change it. */
+.rs-card-select {
+  margin-left: auto;
+  max-width: 100%;
+  padding: 0.15rem 0.3rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.rs-card-select:hover,
+.rs-card-select:focus {
+  color: var(--text-primary);
+  border-color: var(--accent-color);
+}
+
+/* Grows like .rs-stats does, so a card that is still loading is the same height
+   as one that has rendered — otherwise the grid resizes as each card lands. */
+.rs-card-state {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+/* ── Headline ───────────────────────────────────────────────────────────── */
+
+.rs-headline {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.9rem 1rem 0.6rem;
+}
+
+.rs-headline-value {
+  font-size: 1.7rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.rs-headline-label {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.rs-headline-pct {
+  margin-left: auto;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Utilization thresholds. Amber and red carry the whole signal on a screen with
+   no bars, so they are the only colour used for data. */
+.rs-headline-pct.is-ok {
+  color: var(--success-color);
+}
+
+.rs-headline-pct.is-warn {
+  color: var(--warn-color);
+}
+
+.rs-headline-pct.is-critical {
+  color: var(--error-color);
+}
+
+/* ── Capacity bar (the Windows Explorer drive control) ──────────────────── */
+
+.rs-cap {
+  padding: 0 1rem 0.85rem;
+}
+
+/* Square-ish and hairline-bordered, like the Explorer control. The track is
+   darker than the card so an almost-empty bar still reads as a container rather
+   than as a stray rule. */
+.rs-cap-track {
+  height: 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  background: var(--surface-color);
+  overflow: hidden;
+}
+
+.rs-cap-fill {
+  height: 100%;
+  /* No transition: these values change only on refresh, and animating a disk
+     gauge makes a static reading look like live telemetry. */
+  background: var(--text-secondary);
+}
+
+/* Shares the thresholds and class names with .rs-headline-pct above, so the bar
+   and the percentage on the same card can never disagree. */
+.rs-cap-fill.is-ok {
+  background: var(--accent-color);
+}
+
+.rs-cap-fill.is-warn {
+  background: var(--warn-color);
+}
+
+.rs-cap-fill.is-critical {
+  background: var(--error-color);
+}
+
+.rs-cap-caption {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+/* ── Stat list: label · note · value ────────────────────────────────────── */
+
+.rs-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.6rem;
+  border-top: 1px solid var(--border-color);
+  /* Absorbs the height difference between cards with four stat rows and Memory's
+     five, so the equal-height grid pads the bottom of the shorter cards rather
+     than stretching the rows apart. See the note on .rs-split. */
+  flex: 1;
+}
+
+.rs-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.45rem 1rem;
+}
+
+.rs-stat:first-child {
+  padding-top: 0.6rem;
+}
+
+.rs-stat.is-strong {
+  background: var(--hover-bg);
+}
+
+.rs-stat-label {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+.rs-stat-note {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.rs-stat-value {
+  margin-left: auto;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.rs-stat.is-strong .rs-stat-value {
+  color: var(--accent-color);
+}
+
+/* ── Card footer: how old this card's own reading is ────────────────────── */
+
+/*
+ * Per-card rather than only in the header, because the collectors do not report
+ * at the same rate — the kubelet volume scraper behind NFS Storage runs minutes
+ * behind the host metrics. One shared "reading age" in the header would state
+ * something untrue about three of the four cards.
+ */
+.rs-card-foot {
+  padding: 0.45rem 1rem 0.6rem;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+/*
+ * A reading old enough to be the reason the number is not moving.
+ *
+ * The whole point is that it must not look like the rest of the footer: a viewer
+ * who cannot see this reads an unchanging figure as a broken screen and goes
+ * looking for a bug in the UI, when the thing to chase is the pod that stopped
+ * reporting. Amber matches .rs-asof.is-stale, and for the same reason — a stale
+ * reading is a caveat on the figure, not a failure of it.
+ */
+.rs-card-foot.is-stale {
+  color: var(--warn-color);
+  font-weight: 500;
+}
+
+/* ── Per-node breakdown ─────────────────────────────────────────────────── */
+
+/*
+ * The rows behind the cluster averages. A single averaged figure hides the case
+ * that matters: seven idle nodes and one pinned at 100% average to something
+ * comfortable.
+ */
+.rs-nodes {
+  margin-top: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-color);
+  overflow: hidden;
+}
+
+.rs-nodes-title {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* Scrolls inside its own box so a wide table cannot push the page sideways. */
+.rs-nodes-table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.rs-nodes-table thead th {
+  padding: 0.45rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.rs-nodes-table tbody tr:not(:last-child) th,
+.rs-nodes-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.rs-nodes-table tbody tr:hover {
+  background: var(--hover-bg);
+}
+
+.rs-nodes-table th[scope='row'],
+.rs-nodes-table td {
+  padding: 0.45rem 1rem;
+  text-align: left;
+  font-weight: 400;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+/* Filters the whole screen to this node. A link rather than a row click so the
+   affordance is on the thing that acts, and keyboard focus lands on it. */
+.rs-node-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.rs-node-link:hover,
+.rs-node-link:focus-visible {
+  color: var(--accent-color);
+  text-decoration: underline;
+}
+
+/* Same thresholds and tone classes as the cards, so a row can never disagree
+   with the card above it about whether a number is worth worrying about. */
+.rs-node-pct {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.rs-node-pct.is-ok {
+  color: var(--success-color);
+}
+
+.rs-node-pct.is-warn {
+  color: var(--warn-color);
+}
+
+.rs-node-pct.is-critical {
+  color: var(--error-color);
+}
+
+.rs-node-sub {
+  margin-left: 0.45rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.rs-node-age {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+}
+
+@media (max-width: 900px) {
+  .rs-head-right {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .rs-asof {
+    display: none;
+  }
+}

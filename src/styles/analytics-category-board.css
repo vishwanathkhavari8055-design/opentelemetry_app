@@ -1,0 +1,467 @@
+/* ===========================================================================
+   Analytics Category Board — the deck's second face.
+
+   Category cards on top, the selected category's members beneath. The cards stay
+   on screen after one is picked, which is the whole difference from the Drill
+   Table: comparing two categories must not mean clicking back and forth and
+   trying to remember numbers.
+
+   Severity colours come from the --an-* tokens in analytics.css. Both faces
+   colour the same five buckets and the flip exists so the two can be compared, so
+   a second palette here is how "the same error count" stops looking like the same
+   number.
+   =========================================================================== */
+
+.acb-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 0.7rem;
+  padding: 0.75rem;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────────── */
+
+.acb-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+.acb-head-title {
+  min-width: 0;
+}
+
+/* Instructional, not decorative: the board's one non-obvious affordance is that a
+   member row expands, and this is where that is said. */
+.acb-subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+.acb-head-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ── Scroll region ───────────────────────────────────────────────────────────
+   The cards AND the panel scroll together, deliberately. Pinning the cards would
+   cost a third of the viewport on the level you have already chosen, and the panel
+   is the part with rows worth reading. The panel's own column header stays sticky
+   inside this region instead, which is the header that actually has to persist. */
+
+.acb-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ── Category cards ──────────────────────────────────────────────────────────── */
+
+.acb-cards {
+  display: grid;
+  /* auto-fill, not auto-fit: a single registered category should stay a card, not
+     stretch into a banner the width of the screen. */
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 0.6rem;
+}
+
+.acb-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.acb-card:hover {
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.acb-card:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+
+/* An inset ring rather than a thicker border: a border that changes width on
+   selection reflows the whole grid by a pixel, and every card twitches. */
+.acb-card.is-selected {
+  border-color: var(--accent-color);
+  box-shadow: inset 0 0 0 1px var(--accent-color);
+}
+
+/* Registered but produced nothing in range. Dimmed rather than hidden — a silent
+   category is a finding, and often the one worth chasing. */
+.acb-card.is-silent {
+  opacity: 0.62;
+}
+
+.acb-card--skeleton {
+  display: flex;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.acb-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.acb-card-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* How many things the click will open. It says what the card does, so it belongs
+   on the card rather than in a tooltip. */
+.acb-card-children {
+  flex: 0 0 auto;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+}
+
+.acb-card-total {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.acb-card-total-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* Share of the whole estate. The number that makes the cards comparable — 400K is
+   either most of the platform or a rounding error, and only this says which. */
+.acb-card-share {
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+.acb-card-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.6rem;
+}
+
+.acb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.66rem;
+}
+
+.acb-chip-label {
+  color: var(--text-secondary);
+}
+
+.acb-chip-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Warn and Error only, and only when non-zero — the class is applied by the component.
+   Info and Debug keep the primary text colour: they are the bulk of a healthy card,
+   and colouring the bulk of every card leaves the colour on Warn and Error meaning
+   nothing. Same rule the panel columns follow one section down.
+
+   CategoryCard emits acb-chip-value--info and --debug too, and finding no rule for
+   them here is the intended answer rather than a missing one: the component tones
+   every bucket uniformly and this stylesheet decides which tones are worth paint. */
+.acb-chip-value--warn  { color: var(--an-warn); }
+.acb-chip-value--error { color: var(--an-error); }
+
+.acb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.acb-dot--info  { background: var(--an-info); }
+.acb-dot--warn  { background: var(--an-warn); }
+.acb-dot--error { background: var(--an-error); }
+.acb-dot--debug { background: var(--an-debug); }
+.acb-dot--other { background: var(--an-other); }
+
+/* ── Stacked severity bar ────────────────────────────────────────────────────
+   Segments are percentages of TOTAL, including Other, so a row that is mostly
+   unspecified looks mostly unspecified. Normalising against the sum of the named
+   buckets instead would make such a row read as a clean info/error mix, which is
+   exactly the impression this bar exists to prevent. */
+
+.acb-bar {
+  display: flex;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--company-bg);
+}
+
+.acb-bar-seg {
+  height: 100%;
+  /* No min-width. A 0.1% error segment widened to be visible would misreport the
+     mix, and the exact counts are one row to the right anyway. */
+}
+
+.acb-bar-seg--info  { background: var(--an-info); }
+.acb-bar-seg--warn  { background: var(--an-warn); }
+.acb-bar-seg--error { background: var(--an-error); }
+.acb-bar-seg--debug { background: var(--an-debug); }
+.acb-bar-seg--other { background: var(--an-other); }
+
+/* A flat rail for a row with no logs in range. An absent bar reads as a rendering
+   failure; this reads as zero, which is what it means. */
+.acb-bar--empty {
+  display: block;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--company-bg);
+  box-shadow: inset 0 0 0 1px var(--border-color);
+}
+
+/* ── Members panel ───────────────────────────────────────────────────────────── */
+
+/* One grid, declared once on the PANEL and inherited by its header and every row, so a
+   row's Error count cannot land under the header's Debug. Seven columns, fixed: service
+   name, then Total and the five severity buckets.
+
+   No product column and no severity-mix column. The rows are services and only
+   services, and the numbers speak for themselves — adding a tier or a second
+   representation of the same figures back into the layout is what this panel exists not
+   to do. Which product a service belongs to lives in its tooltip.
+
+   The freed width goes to the count columns rather than the name: a wider service name
+   buys nothing once it fits, while wider number columns stop 150,805 sitting flush
+   against the next heading. */
+.acb-panel {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  overflow: hidden;
+  --acb-cols:
+    minmax(200px, 2.4fr)
+    repeat(6, minmax(88px, 0.7fr));
+}
+
+.acb-panel-head,
+.acb-row {
+  display: grid;
+  grid-template-columns: var(--acb-cols);
+  align-items: center;
+  column-gap: 0.7rem;
+  padding: 0.42rem 0.7rem;
+  font-size: 0.77rem;
+}
+
+.acb-panel-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.acb-panel-head > span,
+.acb-panel-head > button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acb-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.acb-sort.acb-num {
+  justify-content: flex-end;
+}
+
+.acb-sort-caret {
+  opacity: 0.7;
+}
+
+.acb-row {
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* A row is a microservice — the leaf of the catalog — so it is not clickable and does
+   not pretend to be. The hover tint is a reading aid for tracking one row across nine
+   columns, not an affordance. */
+.acb-row:hover {
+  background: var(--hover-bg);
+}
+
+.acb-row--skeleton {
+  pointer-events: none;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* "Registered, enabled, and silent." Deliberately NOT an error banner — nothing has
+   failed, and colouring it red would send someone looking for a fault in the
+   dashboard instead of in the ingest path. A warn-tinted left edge is enough to say
+   "read me" above a column of zeros. Not part of the row grid: it is a sentence, not
+   a record. */
+.acb-silent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: inset 3px 0 0 var(--an-warn);
+  background: var(--company-bg);
+}
+
+.acb-silent-text {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  max-width: 92ch;
+}
+
+.acb-silent-btn {
+  flex: 0 0 auto;
+}
+
+.acb-name {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+.acb-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* There is no leaf tier here, and no product tier either. The rows ARE the
+   microservices — the backend flattens the product away — so this panel is one flat
+   ranked list rather than a tree. The Drill Table face is where the
+   category → product → microservice path still lives.
+
+   ── Footer ──────────────────────────────────────────────────────────────────
+   The reconciliation note is on screen rather than in a tooltip: a table whose
+   columns appear not to add up reads as broken, and the explanation has to be where
+   the doubt is. */
+
+.acb-foot {
+  display: flex;
+  align-items: center;
+  /* flex-end, not space-between: the note that used to sit opposite the
+     window range is gone, and space-between would slide the range left. */
+  justify-content: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.acb-foot-range {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+/* ── Numbers ─────────────────────────────────────────────────────────────────
+   Tabular figures and right alignment: these columns exist to be compared
+   downwards, which proportional digits make impossible. */
+
+.acb-num {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acb-num.is-strong { font-weight: 700; }
+.acb-num.is-dim    { color: var(--text-secondary); }
+.acb-num--warn     { color: var(--an-warn); }
+.acb-num--error    { color: var(--an-error); }
+.acb-num--debug    { color: var(--an-debug); }
+
+/* Info is left in the primary text colour on purpose. It is the majority of a
+   healthy stream, and colouring the majority of every row leaves nothing for the
+   colour on the columns that matter to mean. */
+
+/* ── Narrow viewports ────────────────────────────────────────────────────────
+   Every column here carries a number that exists nowhere else on the row, so none can
+   be dropped. They tighten instead: the name gives up width first, then the counts fall
+   back to their minimum and the panel scrolls horizontally with .acb-scroll rather than
+   crushing a seven-figure count into an ellipsis. */
+
+@media (max-width: 1080px) {
+  .acb-panel {
+    --acb-cols: minmax(140px, 1.8fr) repeat(6, minmax(72px, 0.6fr));
+  }
+
+  .acb-panel-head,
+  .acb-row {
+    column-gap: 0.5rem;
+    padding: 0.42rem 0.5rem;
+  }
+}

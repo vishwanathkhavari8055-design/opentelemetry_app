@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Observability Web Components Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .section-header {
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .section-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: #00968f;
+        }
+
+        .wc-card {
+            background: #1e1e1e;
+            border-radius: 8px;
+            border: 1px solid #333;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Observability Web Components Integration Demo</h1>
+        
+        <!-- Summary Dashboard Card -->
+        <div class="wc-card">
+            <div class="section-header">
+                <h2>1. Metrics & Uptime Summary Dashboard (&lt;observability-summary&gt;)</h2>
+            </div>
+            <observability-summary id="summary-wc" api-base-url="http://localhost:8081/OpentelemetryService/api"></observability-summary>
+        </div>
+
+        <!-- Logs & Traces Card -->
+        <div class="wc-card">
+            <div class="section-header">
+                <h2>2. Detailed Logs & Traces Search View (&lt;observability-ui&gt;)</h2>
+            </div>
+            <observability-ui id="logs-wc" api-base-url="http://localhost:8081/OpentelemetryService/api"></observability-ui>
+        </div>
+    </div>
+
+    <!-- Script to load the combined Web Components bundle -->
+    <script type="module" src="./dist/observability-ui.js"></script>
+
+    <!-- Script to wire the drill-to-service custom event from summary to logs -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const summaryWC = document.getElementById('summary-wc');
+            const logsWC = document.getElementById('logs-wc');
+
+            if (summaryWC && logsWC) {
+                summaryWC.addEventListener('drill-to-service', (event) => {
+                    const serviceName = event.detail.serviceName;
+                    console.log(`[Demo] Captured 'drill-to-service' event for service: ${serviceName}`);
+                    
+                    // Set the service-prefill attribute on the logs component
+                    logsWC.setAttribute('service-prefill', serviceName);
+                    
+                    // Smoothly scroll logs component into view
+                    logsWC.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

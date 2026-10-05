@@ -1,0 +1,487 @@
+/* ==========================================================================
+   Product Catalog — the registry of monitored resources.
+
+   Built on the existing token set (--accent-color / --surface-color /
+   --border-color / --text-*) and reuses the shared controls rather than
+   restyling them: .iam-search, .iam-switch-btn, .iam-foot, .ae-select,
+   .alerts-btn-primary / -ghost, .alerts-modal-*, .alerts-banner. Only the parts
+   with no equivalent anywhere else are defined here — the status pill, the
+   signal checklist, and the bindings table.
+   ========================================================================== */
+
+.pc-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+/* ── Header + toolbar ────────────────────────────────────────────────────── */
+
+.pc-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+}
+
+.pc-head-title {
+  min-width: 0;
+}
+
+.pc-title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pc-subtitle {
+  margin: 0.2rem 0 0;
+  max-width: 62ch;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.pc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+/* Narrower than the default .ae-select, which is sized for the alert editor's
+   full-width form rows. */
+.pc-filter {
+  width: auto;
+  min-width: 150px;
+  height: 30px;
+  padding: 0 0.5rem;
+  font-size: 0.78rem;
+}
+
+/* ── Table ──────────────────────────────────────────────────────────────── */
+
+.pc-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  overflow: hidden;
+}
+
+.pc-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.pc-row {
+  display: grid;
+  /* Category · Product · Resource · Version · Status · Last Seen · Actions, in
+     the order a registration is made. The actions track stays fixed so the three
+     buttons never wrap onto a second line.
+
+     Product and Resource share the flexible space roughly evenly: the product
+     labels are long ("trinityIoT - GIS Integration with 3D Engine") and the
+     microservice names are short, but truncating the product would collapse
+     several of them to the same visible prefix. Version is narrow because a
+     semver string is a handful of characters. */
+  grid-template-columns:
+    minmax(110px, 0.9fr)    /* category    */
+    minmax(200px, 2.0fr)    /* product     */
+    minmax(180px, 2.0fr)    /* resource    */
+    minmax(80px,  0.6fr)    /* version     */
+    minmax(105px, 0.7fr)    /* status      */
+    minmax(110px, 0.8fr)    /* last seen   */
+    230px;                  /* actions     */
+  align-items: center;
+  column-gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.8rem;
+}
+
+.pc-row--head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.pc-row > span {
+  min-width: 0;
+}
+
+/* Everything except the two cells that hold their own layout. */
+.pc-row > span:not(.pc-actions):not(.pc-name) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-body .pc-row:hover {
+  background: var(--hover-bg);
+}
+
+.pc-category {
+  color: var(--text-secondary);
+}
+
+/* The product tier. Dimmer than the microservice beside it, because the row reads
+   as "this service, inside that product" — the service is the subject. */
+.pc-product {
+  color: var(--text-secondary);
+}
+
+/* Tabular figures so version strings line up down the column, and a row deployed
+   at a different version is visible by shape rather than by reading each one. */
+.pc-version {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pc-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.pc-name > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The identifier telemetry actually uses, shown only when it differs from the
+   label — it is what governs filtering, so a mismatch must be visible. */
+.pc-resolved {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 400;
+}
+
+.pc-lastseen {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.pc-dim {
+  color: var(--text-secondary);
+}
+
+.pc-mono,
+.pc-id {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+/* ── Status pill ─────────────────────────────────────────────────────────── */
+
+.pc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.1rem 0.5rem 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pc-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+/* Colour AND a label, never colour alone — this is the one column someone scans
+   to decide whether telemetry is flowing. */
+.pc-status--on {
+  background: color-mix(in srgb, var(--success-color) 16%, transparent);
+  color: #4caf50;
+}
+
+.pc-status--off {
+  background: color-mix(in srgb, var(--error-color) 16%, transparent);
+  color: #ef5350;
+}
+
+/* ── Signal checklist ────────────────────────────────────────────────────── */
+
+.pc-signals {
+  display: flex;
+  gap: 0.85rem;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pc-signals li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.pc-signals li.is-on {
+  color: var(--text-primary);
+}
+
+.pc-signals li.is-off {
+  color: var(--text-secondary);
+}
+
+.pc-signal-mark {
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pc-signals li.is-on .pc-signal-mark {
+  color: #4caf50;
+}
+
+.pc-signals li.is-off .pc-signal-mark {
+  color: #ef5350;
+  opacity: 0.75;
+}
+
+/* The tick/cross is decorative; screen readers get the word instead. */
+.pc-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Row actions ─────────────────────────────────────────────────────────── */
+
+.pc-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.pc-actions .iam-switch-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pc-danger {
+  color: #ef5350;
+}
+
+.pc-danger:hover:not(:disabled) {
+  border-color: #ef5350;
+  background: color-mix(in srgb, var(--error-color) 12%, transparent);
+}
+
+.pc-btn-danger {
+  background: var(--error-color);
+  border-color: var(--error-color);
+}
+
+.pc-btn-danger:hover:not(:disabled) {
+  background: #b71c1c;
+  border-color: #b71c1c;
+}
+
+/* ── Register dialog ─────────────────────────────────────────────────────── */
+
+/*
+ * Two fields and an action, nothing else. The per-field hints and the Validate
+ * row that used to sit between them were removed, and with them the whole
+ * .pc-validation* block that styled the inline validation report — those rules
+ * had no markup left to match.
+ *
+ * The dialog is short enough now that the shared .ae-stack bottom margin is the
+ * only thing separating the last field from the footer rule. Dropping it there
+ * stops that gap from reading as double padding; .ae-stack is used by the IAM
+ * drawer and the alert modals too, so this is scoped rather than changed at
+ * source.
+ */
+/* ── Details drawer ──────────────────────────────────────────────────────── */
+
+.pc-facts {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) 1fr;
+  gap: 0.4rem 0.9rem;
+  margin: 0;
+}
+
+.pc-facts dt {
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+.pc-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 0.78rem;
+}
+
+.pc-facts dd code {
+  font-family: var(--font-mono);
+  font-size: 0.73rem;
+  color: var(--accent-color);
+}
+
+.pc-section-title {
+  margin: 1.25rem 0 0.15rem;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Bindings table ──────────────────────────────────────────────────────── */
+
+.pc-bindings {
+  margin-top: 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  /* Four monospace columns can exceed a drawer's width; scroll the table rather
+     than the page. */
+  overflow-x: auto;
+}
+
+.pc-binding {
+  display: grid;
+  grid-template-columns: 72px minmax(90px, 1fr) minmax(120px, 1.2fr) minmax(120px, 1.4fr);
+  align-items: center;
+  column-gap: 0.6rem;
+  min-width: 420px;
+  padding: 0.35rem 0.55rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.74rem;
+}
+
+.pc-binding:last-child {
+  border-bottom: none;
+}
+
+.pc-binding > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pc-binding--head {
+  background: var(--company-bg);
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pc-signal-tag {
+  display: inline-block;
+  padding: 0.05rem 0.4rem;
+  border-radius: 3px;
+  background: var(--hover-bg);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  text-align: center;
+}
+
+.pc-signal-tag--logs {
+  color: #64b5f6;
+}
+
+.pc-signal-tag--traces {
+  color: #ba68c8;
+}
+
+.pc-signal-tag--metrics {
+  color: #4db6ac;
+}
+
+/* ── Remove confirmation ─────────────────────────────────────────────────── */
+
+.pc-confirm-text {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.pc-confirm-warn {
+  margin: 0.7rem 0 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #ffca28;
+  border-radius: 5px;
+  background: rgba(255, 202, 40, 0.1);
+  color: #000000;
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+/* ── Narrow screens ─────────────────────────────────────────────────────── */
+
+/* The 1100px breakpoint that used to hide the Telemetry column is gone with the
+   column itself. Five columns fit comfortably at that width, so narrowing now
+   only needs the 780px rule below. */
+
+@media (max-width: 780px) {
+  .pc-head {
+    align-items: stretch;
+  }
+
+  .pc-toolbar {
+    margin-left: 0;
+  }
+
+  .iam-search,
+  .pc-filter {
+    flex: 1 1 160px;
+    width: auto;
+    max-width: none;
+  }
+
+  /* Last Seen folds away; the drawer keeps the exact timestamp.
+     nth-child(4), not (5) — removing the Telemetry column shifted every index
+     after Status down by one, so the old selector would now hide Actions and
+     take every button on the screen with it. */
+  .pc-row {
+    grid-template-columns: minmax(90px, 0.8fr) minmax(150px, 2fr) minmax(95px, 0.6fr) 230px;
+  }
+
+  .pc-row > span:nth-child(4) {
+    display: none;
+  }
+}

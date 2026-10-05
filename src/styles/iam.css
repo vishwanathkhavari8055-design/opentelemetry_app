@@ -1,0 +1,1506 @@
+/* ==========================================================================
+   Settings screen (route key `iam`) + the global organization switcher.
+   ========================================================================== */
+
+/* ── Org switcher (app header) ──────────────────────────────────────────── */
+
+/* Right-hand cluster inside the existing .app-topbar. margin-left:auto packs
+   it against the identity on the right while the brand stays put on the left;
+   the bar is justify-content:space-between, so without this a third child
+   would be spread into the middle and push the logo around. */
+.app-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.orgsw {
+  position: relative;
+}
+
+.orgsw-face {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 28px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+  max-width: 220px;
+}
+
+.orgsw-face:hover,
+.orgsw-face.is-open {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.orgsw-face-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orgsw-caret {
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+}
+
+.orgsw-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  min-width: 280px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.orgsw-head {
+  padding: 0.35rem 0.5rem 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.orgsw-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.orgsw-item:hover {
+  background: var(--hover-bg);
+}
+
+.orgsw-item.is-active {
+  background: var(--hover-bg);
+}
+
+.orgsw-item.is-active .orgsw-item-name {
+  color: var(--accent-color);
+}
+
+.orgsw-item-name {
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* The identifier is what goes on the wire and names are not unique, so it is
+   always shown — picking the wrong org silently answers about another tenant. */
+.orgsw-item-id {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+}
+
+.orgsw-empty {
+  padding: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-style: italic;
+}
+
+/* ── Settings layout ────────────────────────────────────────────────────── */
+
+/*
+   Settings screen palette and layout, measured off the wireframe by sampling its
+   pixels rather than reading tones by eye.
+
+   The palette is declared on the SCREEN ROOT, not on :root. Settings is the only
+   screen drawn to this spec; putting these values on :root would repaint Logs,
+   Traces, Metrics and Alerts along with it. Scoped here, the tokens are visible to
+   every rule below and — because both render inside `.iam-main` — to the two views
+   that bring their own chrome (`.pc-view`, `.rs-view`), whose overrides sit at the
+   bottom of this file.
+
+   EVERY EDGE ON THIS SCREEN IS SQUARE, so each rule states `border-radius: 0`
+   outright. There is no blanket `.iam-view *` rule doing it, deliberately: that
+   selector is only (0,1,0) specific, so it would lose to any single-class rule in a
+   stylesheet imported after this one — `.alerts-btn-primary` and `.ae-select` in
+   alerts.css are exactly that, and their radii would come back with no rule here
+   appearing to have changed.
+*/
+.iam-view {
+  /* Sampled from the wireframe. The page and the card are the SAME fill; what
+     separates them is the 11px frame on `.iam-main`, not a change of tone. */
+  --set-bg: #262626;
+  --set-panel: #262626;
+  --set-line: #404040;
+  --set-row: #313131;
+  --set-row-hover: #3b3b3b;
+  --set-accent: #009688;
+  --set-ink: #ffffff;
+  /* Fill behind the role/type badge's 2px accent edge. */
+  --set-badge: #27453d;
+  /* The rule under a card title. Lighter than --set-line: it is drawn on the
+     card, where a #404040 hairline all but disappears. */
+  --set-rule: #5a5a5a;
+  /* Two insets that have to stay in step. The row band is inset this far from the
+     card's inner edge; the cell text is inset this far again from the band. The
+     column headings sit OUTSIDE the band, so their padding is the sum of the two —
+     which is what keeps each heading over its column. */
+  --set-band-inset: 13px;
+  --set-cell-pad: 1.35rem;
+
+  /* Open Sans throughout this screen. Done by REDEFINING the two font tokens
+     rather than by writing the family on each rule: custom properties inherit,
+     so every descendant that already reads `var(--font-sans)` or
+     `var(--font-mono)` resolves to Open Sans here and to the app defaults
+     everywhere else — including the Product Catalog and Resources views, which
+     bring their own stylesheets but render inside `.iam-main`.
+
+     `--font-mono` is deliberately pointed at Open Sans too: "everywhere in
+     settings" covers the identifier and token cells, which are the only mono
+     text on the screen. Point it back at the app's `'JetBrains Mono', monospace`
+     if those columns should stay fixed-width. */
+  --font-sans: 'Open Sans', sans-serif;
+  --font-mono: 'Open Sans', sans-serif;
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--set-bg);
+  color: var(--set-ink);
+  /* body sets the app font on `--font-sans`, but it resolved that token against
+     :root — the override above only reaches this subtree once something here
+     re-reads it. */
+  font-family: var(--font-sans);
+}
+
+/* Form controls do not inherit `font-family` from their ancestors — left alone
+   they take the UA's own (Arial, on Windows), which is why several inputs on this
+   screen already had to say `font-family: inherit` one by one. This makes that the
+   default for the whole subtree, so a control added later to Settings — or one
+   arriving from the Product Catalog and Resources stylesheets, which never had
+   such a rule — is in Open Sans without needing to know about any of this. */
+.iam-view input,
+.iam-view select,
+.iam-view textarea,
+.iam-view button {
+  font-family: inherit;
+}
+
+.iam-topbar {
+  flex-shrink: 0;
+  padding: 0.95rem 1.15rem;
+  border-bottom: 1px solid var(--set-line);
+  background: var(--set-panel);
+}
+
+.iam-topbar-title {
+  margin: 0;
+  color: var(--set-ink);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+/* The box the tab strip and the panel share. It draws nothing itself — the
+   wireframe's visible frame belongs to `.iam-main` below — so all this contributes
+   is the 12px the whole assembly is inset from the content area. */
+.iam-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0 12px 12px;
+  border: none;
+  background-color: transparent;
+  box-sizing: border-box;
+}
+
+/* ── Tab strip ──────────────────────────────────────────────────────────── */
+
+/*
+   The strip sits 17px below the container's top and flush with the frame's left
+   edge, both measured off the wireframe.
+
+   align-items:flex-start with a 39px band and 37px tabs is what distinguishes the
+   selected tab: every tab shares one top edge, and only the active one is tall
+   enough to reach the frame below, so the inactive tabs keep a 2px seam of page
+   colour under them and the active one merges into the frame. That seam IS the
+   selected state — the fills are identical (see `.iam-tab`).
+
+   NO `gap`. The tabs abut, and the hairline between two of them is a 1px divider
+   drawn INSIDE the right-hand tab (see `.iam-tab + .iam-tab`). A gap here would
+   instead be a 2px channel of page colour, which reads as five detached buttons
+   rather than one segmented strip.
+
+   DELIBERATELY NOT A SCROLL CONTAINER. This was `overflow-x: auto` with the
+   scrollbar suppressed per-engine, which meant that anywhere the suppression was
+   not honoured a horizontal scrollbar appeared as a band between the strip and the
+   panel — and because that band is drawn inside a box whose height is exactly the
+   active tab's, it also clipped the tabs above it. The tabs share the width and
+   ellipsise their labels instead, so there is no overflow to hide.
+*/
+.iam-tabs {
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+  height: 39px;
+  margin: 19px 0 0;
+}
+
+/* 214px wide in the wireframe, and the same #404040 whether selected or not —
+   sampled at 100% on all four tabs, top and bottom. Shrinkable FROM 214px rather
+   than fixed AT it: `min-width: 0` is the part that actually permits the shrink,
+   since a flex item will not go below its content width without it. */
+.iam-tab {
+  flex: 0 1 214px;
+  min-width: 0;
+  height: 37px;
+  padding: 0 1.1rem;
+  border: none;
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 120ms ease;
+}
+
+/* The seam between two adjacent tabs. An inset shadow rather than a border-left,
+   so the divider costs the tab no layout: a border would eat 1px out of every
+   tab's box and drag the strip off the 214px grid. */
+.iam-tab + .iam-tab {
+  box-shadow: inset 1px 0 0 var(--set-bg);
+}
+
+.iam-tab:hover:not(.is-active) {
+  background: #4d4d4d;
+}
+
+/* Two pixels taller, and that is the whole difference in the fill — see the note
+   on `.iam-tabs` for why those two pixels are what read as "selected". */
+.iam-tab.is-active {
+  height: 39px;
+  font-weight: 700;
+}
+
+/* ── Panel ──────────────────────────────────────────────────────────────── */
+
+/*
+   The panel. Its 11px #404040 border IS the frame around the card in the wireframe:
+   sampling shows an 11px band of #404040 on all four sides with #262626 both inside
+   it and outside, so the frame is the only thing separating card from page. Drawing
+   it as a border rather than as padding on a wrapper keeps it on the element that
+   owns the card's fill.
+
+   NO top margin. It carried `margin-top: 1px`, which drew a 1px line of page
+   colour across the full width directly under the strip — under the ACTIVE tab
+   too, so the tab never reached the frame and the selected state lost the very
+   thing that signals it (see the note on `.iam-tabs`). Butted against the strip,
+   the active tab merges into the frame and only the inactive tabs keep their 2px
+   seam, which is the intended reading.
+*/
+.iam-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  border: 11px solid var(--set-line);
+  border-radius: 0;
+  background-color: var(--set-panel);
+  box-sizing: border-box;
+}
+
+/* The rule under the card title stops short of the card's edge on both sides, so it
+   is a pseudo-element rather than a border — a border-bottom always spans the full
+   padding box. It is inset to the same place the row bands start. */
+.iam-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.9rem var(--set-band-inset);
+}
+
+.iam-head::after {
+  content: '';
+  position: absolute;
+  right: var(--set-band-inset);
+  bottom: 0;
+  left: var(--set-band-inset);
+  height: 1px;
+  background: var(--set-rule);
+}
+
+.iam-title {
+  margin: 0;
+  color: var(--set-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.iam-head-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+/*
+   SHARED CONTROL. The Alerts and Analytics screens use `.iam-search` too, and
+   they are not inside `.iam-view` — so the base rule keeps the app's own tokens
+   and the Settings palette goes on a `.iam-view`-scoped override below. Same
+   split applies to `.iam-switch-btn`, `.iam-state`, `.iam-foot*` and
+   `.iam-pager` further down; restyling the base rules in place would have
+   repainted those screens.
+*/
+.iam-search {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 260px;
+  max-width: 40vw;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-secondary);
+}
+
+.iam-search:focus-within {
+  border-color: var(--accent-color);
+}
+
+.iam-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
+.iam-view .iam-search {
+  gap: 0.45rem;
+  width: 200px;
+  height: 28px;
+  padding: 0 0.55rem;
+  border-color: var(--set-line);
+  border-radius: 0;
+  /* #404040, sampled off the wireframe's search box — the same fill as the tabs,
+     not the lighter row-band tone. The controls below follow it so the header's
+     inputs all read as one family. */
+  background: var(--set-line);
+  color: #a8a8a8;
+}
+
+.iam-view .iam-search:focus-within {
+  border-color: var(--set-accent);
+}
+
+.iam-view .iam-search input {
+  color: var(--set-ink);
+  font-size: 0.78rem;
+}
+
+.iam-view .iam-search input::placeholder {
+  color: #9a9a9a;
+}
+
+/* Export, on Organizations. Grey rather than teal: it is a secondary action
+   sitting where the accent-coloured primary sits on the catalog tab, and two
+   teal buttons in the same slot across tabs would flatten that difference. */
+.iam-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 28px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.iam-export:hover:not(:disabled) {
+  background: #4d4d4d;
+}
+
+.iam-export:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* The refresh square. Scoped to this screen so the identical button in the Logs
+   results bar and the Resources header elsewhere keeps its own outline style. */
+.iam-view .results-bar-btn {
+  min-width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: var(--set-accent);
+  color: #fff;
+}
+
+.iam-view .results-bar-btn:hover:not(:disabled),
+.iam-view .results-bar-btn.is-active {
+  border-color: transparent;
+  background: #00aba2;
+  color: #000000;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+
+.iam-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Rows are separate bands with page colour between them, so the body is a
+   gap-spaced column rather than a scroller with divider lines. 35px bands and 8px
+   gaps, both measured. */
+.iam-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px var(--set-band-inset) var(--set-band-inset);
+}
+
+/* Base geometry for BOTH the column-heading row and the body rows. The side
+   padding here is the heading row's: the sum of the two insets, because the
+   headings sit outside the bands while the body rows sit inside them. */
+.iam-row {
+  display: grid;
+  align-items: center;
+  column-gap: 0.75rem;
+  padding: 2px calc(var(--set-band-inset) + var(--set-cell-pad));
+  font-size: 0.78rem;
+}
+
+/* Seven columns since the Update action was added — the trailing 90px track is
+   the action cell, sized so the button never wraps. */
+.iam-table--users .iam-row {
+  grid-template-columns: 60px minmax(180px, 2fr) minmax(90px, 1fr)
+                         minmax(90px, 1fr) minmax(112px, 0.8fr) minmax(120px, 1.2fr)
+                         minmax(80px, 0.6fr);
+}
+
+.iam-table--accounts .iam-row {
+  grid-template-columns: 60px minmax(180px, 2fr) minmax(140px, 1.5fr) minmax(140px, 1fr);
+}
+
+.iam-table--orgs .iam-row {
+  grid-template-columns: 60px minmax(120px, 1fr) minmax(200px, 2fr)
+                         minmax(112px, 0.7fr) minmax(112px, 0.8fr);
+}
+
+/* Role and Action sit centred under their headings, as drawn. */
+.iam-table--users .iam-row > :nth-child(5),
+.iam-table--users .iam-row > :nth-child(7),
+.iam-table--orgs .iam-row > :nth-child(4),
+.iam-table--orgs .iam-row > :nth-child(5) {
+  text-align: center;
+}
+
+/* Column labels are full-strength white and unspaced here, not the dimmed
+   letter-spaced caps used elsewhere in the app. No rule beneath them: the line that
+   looks like one in the wireframe is the top edge of the first band's #313131
+   against the card. */
+.iam-row--head {
+  position: relative;
+  z-index: 1;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+  background: var(--set-panel);
+  color: var(--set-ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* 35px bands, inset from the card by --set-band-inset via `.iam-body`'s padding.
+   The min-height is what keeps every tab's bands equal — a Users row's tallest
+   content is the 28px badge, a Service Accounts row's is a line of text. */
+.iam-body .iam-row {
+  min-height: 35px;
+  padding: 2px var(--set-cell-pad);
+  border-radius: 0;
+  background: var(--set-row);
+}
+
+.iam-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.iam-body .iam-row:hover {
+  background: var(--set-row-hover);
+}
+
+.iam-row.is-active-org {
+  box-shadow: inset 3px 0 0 var(--set-accent);
+}
+
+.iam-num {
+  color: var(--set-ink);
+}
+
+.iam-ident {
+  color: var(--set-ink);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+}
+
+/* Plain white, not the accent: on a table where every row has one, a coloured
+   email column reads as a column of links to nothing. */
+.iam-email {
+  color: var(--set-ink);
+}
+
+.iam-dim {
+  color: #d0d0d0;
+  font-size: 0.76rem;
+}
+
+/* Outlined rectangle, not a filled pill. */
+/*
+   The badge, to spec: 104x28, a 2px inside border in the accent, and a dark
+   teal-tinted fill rather than the transparent one it had. border-box, so the 2px
+   edge and the 2px padding come out of the 104x28 rather than adding to it.
+*/
+.iam-role,
+.iam-type {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 104px;
+  height: 28px;
+  padding: 2px 2px 2px 2px;
+  border: 2px solid var(--set-accent);
+  border-radius: 0;
+  background-color: var(--set-badge);
+  color: var(--set-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+/* Every role gets the same frame and the same fill. Role is not a severity — the
+   red Admin/Root badge this replaces read as a warning about the row.
+
+   These override single-class rules that would otherwise tint them per role, so
+   they have to restate the badge's own fill rather than clearing it to
+   transparent: being more specific than `.iam-role`, a `transparent` here silently
+   won over the spec'd #27453d. */
+.iam-view .iam-role--root,
+.iam-view .iam-role--admin,
+.iam-view .iam-type--default {
+  background-color: var(--set-badge);
+  color: var(--set-ink);
+}
+
+/* SHARED CONTROL — also the Fired Alerts row menu and the catalog row actions. */
+.iam-switch-btn {
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--accent-color);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.iam-switch-btn:hover {
+  border-color: var(--accent-color);
+  background: var(--hover-bg);
+}
+
+.iam-view .iam-switch-btn {
+  padding: 0.2rem 0.6rem;
+  border-color: var(--set-line);
+  border-radius: 0;
+  color: var(--set-ink);
+}
+
+.iam-view .iam-switch-btn:hover:not(:disabled) {
+  border-color: var(--set-accent);
+  background: transparent;
+  color: var(--set-accent);
+}
+
+/* Bare glyph button for a row action — the wireframe's pencil and bin. */
+.iam-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--set-ink);
+}
+
+.iam-icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--set-accent);
+}
+
+.iam-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Same box as the badge above — it sits in the column beside it, so a different
+   height or width would read as a mistake. */
+.iam-active-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 104px;
+  height: 28px;
+  padding: 2px 2px 2px 2px;
+  border: 2px solid var(--set-accent);
+  border-radius: 0;
+  background-color: var(--set-badge);
+  color: var(--set-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+/* SHARED CONTROL — also the Analytics dashboards' empty state. */
+.iam-state {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.iam-state-error {
+  color: var(--error-color);
+}
+
+.iam-view .iam-state {
+  color: #9a9a9a;
+}
+
+.iam-view .iam-state-error {
+  color: #ef5350;
+}
+
+/* ── Footer / pager ─────────────────────────────────────────────────────── */
+
+/* SHARED CONTROLS — the whole `.iam-foot*` family and `.iam-pager` are reused by
+   the Alerts list, Fired Alerts and its filter bar. Base rules unchanged. */
+.iam-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.iam-foot-total {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.iam-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.iam-foot-range strong {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.iam-foot-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.iam-foot-size select {
+  height: 26px;
+  padding: 0 0.35rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
+.iam-pager {
+  min-width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--surface-color);
+  color: var(--text-secondary);
+}
+
+.iam-pager:hover:not(:disabled) {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.iam-pager:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── The Settings footer band ───────────────────────────────────────────── */
+
+/* No rule above the footer, unlike the shared version: the panel already ends
+   in a border and the pager floats in open space in the reference. */
+.iam-view .iam-foot {
+  padding: 0.55rem 0.9rem 0.7rem;
+  border-top: none;
+  color: #c4c4c4;
+  font-size: 0.76rem;
+}
+
+.iam-view .iam-foot-total {
+  color: var(--set-ink);
+}
+
+.iam-view .iam-foot-range strong {
+  color: var(--set-ink);
+}
+
+.iam-view .iam-foot-size select {
+  border-radius: 0;
+  border-color: var(--set-line);
+  background: var(--set-line);
+  color: var(--set-ink);
+}
+
+.iam-pagerbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* #404040 squares with white glyphs, 28px, and the current page in the accent —
+   sampled straight off the wireframe's pager. */
+.iam-view .iam-pager {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-size: 0.74rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.iam-view .iam-pager:hover:not(:disabled) {
+  border-color: transparent;
+  background: #4d4d4d;
+  color: var(--set-ink);
+}
+
+.iam-view .iam-pager:disabled {
+  opacity: 0.35;
+}
+
+.iam-view .iam-pager.is-current,
+.iam-view .iam-pager.is-current:hover {
+  border-color: transparent;
+  background: var(--set-accent);
+  color: #fff;
+}
+
+.iam-view .iam-pager.is-current:hover {
+  background: #00aba2;
+}
+
+/* The shell's 2px padding and the 15px/16px offsets are absolute figures from the
+   spec and hold at every width, so nothing here touches them any more — the two
+   rules that used to override them were left over from before those figures
+   landed. All that is left is giving the tab labels more of their own box once the
+   strip is narrow enough for them to be truncating. */
+@media (max-width: 900px) {
+  .iam-tab {
+    padding: 0 0.5rem;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Product Catalog, rendered inside the Settings panel.
+
+   The catalog is a standalone screen elsewhere in its own right, so it ships a
+   bordered header card, a bordered table card and a footer. Inside this panel
+   that stacks a card inside a card; these rules flatten it onto the panel so the
+   tab reads exactly like the other four — nothing about the catalog's markup or
+   behaviour changes, only which box draws the edge.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.iam-main > .pc-view {
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+}
+
+/* Same header box as `.iam-head`, down to the inset rule below it. */
+.iam-main > .pc-view > .pc-head {
+  position: relative;
+  align-items: center;
+  padding: 0.9rem var(--set-band-inset);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.iam-main > .pc-view > .pc-head::after {
+  content: '';
+  position: absolute;
+  right: var(--set-band-inset);
+  bottom: 0;
+  left: var(--set-band-inset);
+  height: 1px;
+  background: var(--set-rule);
+}
+
+.iam-main .pc-title {
+  color: var(--set-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* One-line header, as drawn. The subtitle explains the registry, which the
+   standalone screen still shows; here the tab label already says it. */
+.iam-main .pc-subtitle {
+  display: none;
+}
+
+.iam-main > .pc-view > .pc-table {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Catalog rows, kept in step with the Users table: same band height, same gaps,
+   same insets, same tokens. Only the columns differ. */
+.iam-main .pc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px var(--set-band-inset) var(--set-band-inset);
+}
+
+.iam-main .pc-row {
+  padding: 2px calc(var(--set-band-inset) + var(--set-cell-pad));
+  border-bottom: none;
+  font-size: 0.78rem;
+}
+
+.iam-main .pc-row--head {
+  position: relative;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: none;
+  background: var(--set-panel);
+  color: var(--set-ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.iam-main .pc-body .pc-row {
+  min-height: 35px;
+  padding: 2px var(--set-cell-pad);
+  border-radius: 0;
+  background: var(--set-row);
+}
+
+.iam-main .pc-body .pc-row:hover {
+  background: var(--set-row-hover);
+}
+
+/*
+   Ink, likewise matched to the Users rows: one weight, one colour, with only the
+   timestamp column dropped a shade.
+
+   This deliberately flattens the catalog's own hierarchy — on the standalone
+   screen the category and product tiers are dimmed and the resource name is
+   bold, so a row reads "this service, inside that product". Inside Settings the
+   reference draws every cell the same, and a table that matches Users on
+   geometry but not on ink still looks like a different table.
+
+   `.pc-resolved` stays dim: it is a second line under the name rather than a
+   column of its own, and it only appears when the identifier telemetry uses
+   differs from the label — which is exactly when it needs to look subordinate.
+*/
+.iam-main .pc-body .pc-category,
+.iam-main .pc-body .pc-product,
+.iam-main .pc-body .pc-version,
+.iam-main .pc-body .pc-name {
+  color: var(--set-ink);
+  font-weight: 400;
+}
+
+.iam-main .pc-body .pc-lastseen,
+.iam-main .pc-body .pc-dim {
+  color: #d0d0d0;
+}
+
+/* The catalog's own status pill is a 999px capsule on the standalone screen.
+   Squared here to match the rest of the tab. Its dot is deliberately left round:
+   it is a bullet glyph rather than an edge, and a 7px square beside the word
+   reads as a rendering fault, not as a design. */
+.iam-main .pc-status {
+  border-radius: 0;
+}
+
+/* The banners are the only children left needing their own inset, now that the
+   view's padding is gone. */
+.iam-main > .pc-view > .alerts-banner {
+  margin: 0.5rem 0.9rem 0;
+}
+
+.iam-view .alerts-btn-primary {
+  height: 28px;
+  border-color: var(--set-accent);
+  border-radius: 0;
+  background: var(--set-accent);
+}
+
+.iam-view .alerts-btn-ghost,
+.iam-view .ae-select {
+  border-color: var(--set-line);
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+}
+
+.iam-view .pc-filter {
+  height: 28px;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Resources, rendered inside the Settings panel. Card-based rather than a
+   table, so only its header and card surfaces need bringing onto the palette.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.iam-main > .rs-view > .rs-head {
+  padding: 0.7rem 0.9rem 0.6rem;
+  border-bottom: 1px solid var(--set-line);
+}
+
+.iam-main .rs-head .page-heading {
+  color: var(--set-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.iam-main .rs-head-sub {
+  display: none;
+}
+
+.iam-main .rs-body {
+  padding: 0.7rem 0.9rem;
+}
+
+.iam-main .rs-card,
+.iam-main .rs-nodes {
+  border-radius: 0;
+  border-color: var(--set-line);
+  background: var(--set-row);
+}
+
+/* The rest of what Resources brings with it: the heading's icon tile, the
+   per-card node selects, the capacity bars and the scope `code` spans. Squared
+   for the same reason as the catalog's pill — this tab is inside the panel, so it
+   follows the panel's edges. */
+.iam-main .ov-panel-icon,
+.iam-main .rs-card-select,
+.iam-main .rs-cap-track,
+.iam-main .rs-cap-fill,
+.iam-main .rs-card-scope code {
+  border-radius: 0;
+}
+
+.iam-main .rs-card-select {
+  border-color: var(--set-line);
+  color: var(--set-ink);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Update User modal (`uem-`).
+
+   Its own namespace rather than the shared `.alerts-drawer` / `.alerts-modal-*` /
+   `.ae-*` set it used to borrow: this is a centred dialog on a fixed 638×549 box
+   with a label·colon·field grid, and the Alerts editor — which is a right-hand
+   drawer with stacked labels — still needs those classes as they are. Restyling
+   them in place would have rebuilt the alert editor by accident.
+
+   It renders inside `.iam-view`, so the `--set-*` palette below is inherited.
+   The backdrop is fixed-position, so nesting does not affect where it appears.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.uem-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.62);
+}
+
+/*
+   The spec box verbatim, in both of its states: 644x558 closed, 638x655 with
+   Change Password open. 2px of padding, transparent fill, no visible styling of
+   its own — `.uem-inner` is the panel.
+
+   The size is DECLARED, not derived from content, which is the point of the spec.
+   `.uem-body` therefore owns the overflow: whatever does not fit the declared
+   height scrolls inside the body, between the fixed header and footer, so the
+   Cancel/Update buttons can never be pushed out of reach.
+
+   max-width/max-height stay as the small-viewport guard. Both cap the declared
+   size rather than fighting it — a max- always wins over the width/height beside
+   it — so a window shorter than the dialog shrinks it instead of overflowing.
+*/
+.uem {
+  display: flex;
+  width: 644px;
+  height: 558px;
+  max-width: 100%;
+  max-height: 100%;
+  padding: 2px 2px 2px 2px;
+  background-color: rgba(255, 255, 255, 0);
+  box-sizing: border-box;
+}
+
+.uem--pw {
+  width: 638px;
+  height: 655px;
+}
+
+/* Register Resource. Same chrome, same width, but height:auto — the form is three
+   rows or four depending on whether the chosen category has products, so a declared
+   height like the two above would either clip the fourth row or leave a void under
+   the third. `max-height` on `.uem` still guards a short window. */
+.uem--reg {
+  width: 644px;
+  height: auto;
+}
+
+/* Fills the declared box exactly — no min-height of its own, or it would fight the
+   size set above. */
+.uem-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--set-line);
+  background: var(--set-panel);
+}
+
+/* ── Head ───────────────────────────────────────────────────────────────── */
+
+/* Inset rule, as everywhere else on this screen — a border-bottom would run the
+   full width of the panel. */
+.uem-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 1.05rem 1.5rem;
+}
+
+.uem-head::after {
+  content: '';
+  position: absolute;
+  right: 1.5rem;
+  bottom: 0;
+  left: 1.5rem;
+  height: 1px;
+  background: var(--set-line);
+}
+
+.uem-title {
+  margin: 0;
+  color: var(--set-ink);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.uem-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+  border: none;
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.uem-x:hover:not(:disabled) {
+  background: #4d4d4d;
+}
+
+.uem-x:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Body ───────────────────────────────────────────────────────────────── */
+
+.uem-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+/* Label · colon · field. The 168px + 44px tracks put the colons in one column and
+   every control's left edge at the same x, which is the whole point of the layout
+   — a stacked label per field would not read as a form of paired values. */
+.uem-row {
+  display: grid;
+  grid-template-columns: 168px 44px 1fr;
+  align-items: start;
+}
+
+/* 32px line boxes on all three, so a label sits centred against its input without
+   any per-row nudging, and the Email row's value lands on the label's line with
+   its note free to wrap underneath. */
+.uem-label,
+.uem-colon,
+.uem-value {
+  min-height: 32px;
+  color: var(--set-ink);
+  font-size: 0.82rem;
+  line-height: 32px;
+}
+
+.uem-label {
+  font-weight: 600;
+}
+
+.uem-value {
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.uem-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.uem-note {
+  color: #9a9a9a;
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.uem-req {
+  color: var(--set-accent);
+  font-weight: 700;
+}
+
+.uem-input,
+.uem-select {
+  width: 100%;
+  height: 32px;
+  padding: 0 0.65rem;
+  border: none;
+  border-radius: 0;
+  background: var(--set-line);
+  color: var(--set-ink);
+  font-family: inherit;
+  font-size: 0.82rem;
+}
+
+.uem-input::placeholder {
+  color: #9a9a9a;
+}
+
+.uem-input:focus,
+.uem-select:focus {
+  outline: 1px solid var(--set-accent);
+  outline-offset: -1px;
+}
+
+.uem-input:disabled,
+.uem-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.uem-select {
+  cursor: pointer;
+}
+
+/* ── Info panel ─────────────────────────────────────────────────────────── */
+
+.uem-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--set-line);
+  border-radius: 0;
+  background: var(--set-row);
+}
+
+/* The one round thing in the dialog, and deliberately so: it is a badge glyph
+   rather than an edge, and the reference draws it as a disc. */
+.uem-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--set-accent);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.uem-info-text {
+  margin: 0;
+  min-width: 0;
+  color: #d0d0d0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.uem-info--warn .uem-info-icon {
+  background: #f57c00;
+}
+
+.uem-info--error .uem-info-icon {
+  background: #d32f2f;
+}
+
+.uem-info--error .uem-info-text {
+  color: #ef9a9a;
+}
+
+/* ── Change Password toggle ─────────────────────────────────────────────── */
+
+/* `.tb-switch` is the Logs toolbar's switch and is also used four times in the
+   alert editor, so its own rules are left alone and the dialog's larger,
+   full-white treatment is applied here by class. */
+.uem-switch {
+  align-self: flex-start;
+  gap: 0.65rem;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  color: var(--set-ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.uem-switch:hover {
+  background: none;
+}
+
+.uem-switch.is-on {
+  color: var(--set-ink);
+}
+
+.uem-switch .tb-switch-track {
+  width: 44px;
+  height: 22px;
+  border-radius: 999px;
+  background: #1a1a1a;
+}
+
+.uem-switch.is-on .tb-switch-track {
+  background: var(--set-accent);
+}
+
+.uem-switch .tb-switch-thumb {
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+}
+
+.uem-switch.is-on .tb-switch-thumb {
+  transform: translateX(22px);
+}
+
+.uem-switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Foot ───────────────────────────────────────────────────────────────── */
+
+.uem-foot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-shrink: 0;
+  padding: 1.05rem 1.5rem;
+}
+
+.uem-foot::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 1.5rem;
+  left: 1.5rem;
+  height: 1px;
+  background: var(--set-line);
+}
+
+.uem-btn {
+  min-width: 120px;
+  height: 34px;
+  padding: 0 1rem;
+  border: none;
+  border-radius: 0;
+  color: var(--set-ink);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.uem-btn--ghost {
+  background: var(--set-line);
+}
+
+.uem-btn--ghost:hover:not(:disabled) {
+  background: #4d4d4d;
+}
+
+.uem-btn--primary {
+  background: var(--set-accent);
+  color: #fff;
+}
+
+.uem-btn--primary:hover:not(:disabled) {
+  background: #00aba2;
+}
+
+.uem-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  /* The colon column is the first thing to go: below this width the 168px label
+     track leaves the inputs too narrow to read a name in. */
+  .uem-row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .uem-colon {
+    display: none;
+  }
+
+  .uem-label,
+  .uem-value {
+    min-height: 0;
+    line-height: 1.5;
+  }
+}
+
+/* Shown only when the active organization was deleted elsewhere and we had to
+   fall back. Warning-coloured because the screen's entire contents just
+   changed tenant. */
+.org-gone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid #ffca28;
+  border-radius: 5px;
+  background: rgba(255, 202, 40, 0.12);
+  color: #000000;
+  font-size: 0.74rem;
+}
+
+.org-gone-x {
+  color: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.org-gone-x:hover {
+  opacity: 1;
+}
